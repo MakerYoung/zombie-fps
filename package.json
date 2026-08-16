@@ -1,0 +1,31 @@
+{
+  "name": "zombie-fps",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "verify:systems": "node scripts/verify_systems.js",
+    "verify:maps": "node scripts/verify_maps.js",
+    "verify:spawns": "node scripts/verify_enemy_spawns.js",
+    "verify:screenshots": "node scripts/capture_maps.js",
+    "preview": "vite preview",
+    "verify:view": "node scripts/verify_view.js",
+    "verify:batch2": "node scripts/verify_batch2.js",
+    "verify:batch3": "node scripts/verify_batch3.js",
+    "verify:batch4": "node scripts/verify_batch4.js",
+    "verify:batch5": "node scripts/verify_batch5.js"
+    ,"verify:batch6": "node scripts/verify_batch6.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1",
+    "vite": "^8.2.1"
+  }
+}

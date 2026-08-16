@@ -1,0 +1,97 @@
+:root{font-family:Inter,"Microsoft YaHei",sans-serif;color:#173448;background:#8dcdf1;--orange:#ff7b2f;--blue:#24baf4}
+*{box-sizing:border-box}
+html,body,#game{margin:0;width:100%;height:100%;overflow:hidden}
+canvas{display:block}
+button{font:inherit;font-weight:700;color:#17415b;background:linear-gradient(135deg,#fff,#dff4ff);border:1px solid #8bd8f5;padding:12px 26px;cursor:pointer;transition:.18s;box-shadow:0 5px 16px #39789526}
+button:hover{border-color:var(--orange);background:#fff5e9;transform:translateY(-1px)}
+.panel,.overlay,#hud,#mobile,#landscape{display:none}
+.panel.show,.overlay.show,#hud.show{display:flex}
+.panel{position:fixed;z-index:20;inset:0;margin:auto;width:min(440px,90vw);height:max-content;padding:36px;flex-direction:column;gap:12px;background:linear-gradient(145deg,#fffffff8,#eaf8fff5);border:1px solid #a7dff1;border-left:6px solid var(--orange);border-radius:4px 22px 22px 4px;box-shadow:0 20px 80px #2459764d,inset 0 1px #fff;backdrop-filter:blur(14px)}
+.panel h1{font-size:48px;margin:0;letter-spacing:6px}
+.tag{color:#ee6c25;letter-spacing:4px}
+.panel label{display:flex;justify-content:space-between;margin:16px 0}
+.overlay{position:fixed;z-index:19;inset:0;background:linear-gradient(135deg,#dff6f5e8,#bfe8f5e6);align-items:center;justify-content:center;flex-direction:column}
+.loadoutBox{width:min(1120px,94vw);max-height:94vh;overflow:auto;padding:24px 30px;background:linear-gradient(145deg,#fafffffa,#dff4fff5);border-top:5px solid var(--orange);box-shadow:0 20px 80px #24597666}
+.loadoutBox header{display:flex;align-items:center;gap:24px}.loadoutBox header h2,.loadoutBox header p{margin:2px}.loadoutBox h3{margin:18px 0 10px}.loadoutBox>h3 small{color:#2996bd}.mapChoices{display:grid;grid-template-columns:1fr 1fr;gap:14px}.mapOption{display:flex;text-align:left;align-items:center;padding:16px}.mapOption i{font-style:normal;font-size:48px;color:#36acd4;margin-right:18px}.mapOption span,.weaponOption{display:flex;flex-direction:column}.mapOption small,.weaponOption small{font-weight:400;margin-top:7px}.mapOption.selected,.weaponOption.selected{outline:3px solid var(--orange);background:#fff5e9;box-shadow:0 0 22px #ff7b2f55}.weaponChoices{display:grid;gap:10px}.weaponGroup{display:grid;grid-template-columns:110px 1fr;align-items:stretch;gap:10px}.weaponGroup h4{margin:0;display:grid;place-content:center;text-align:center;background:#d4edf7;border-left:4px solid #2aaedc}.weaponGroup h4 em{font-size:11px;font-style:normal;color:#fff;background:#ef7535;padding:2px 8px;margin-top:5px;border-radius:10px}.weaponGroup>div{display:flex;gap:10px;overflow-x:auto;padding:3px}.weaponOption{flex:0 0 205px;min-width:0;min-height:92px;padding:12px;text-align:left;border-left:4px solid #aaa}.weaponOption.rare{border-left-color:#4e9ef1}.weaponOption.legendary{border-left-color:#e9a438}.weaponOption em{font-size:11px;color:#888}.weaponOption b{margin-top:5px}.weaponOption.legendary b{color:#b7750b}#confirmLoadout{display:block;margin:22px auto 0;min-width:220px;background:linear-gradient(135deg,#ff9c55,#ff6928);color:white;border:0}
+.cardRow{display:flex;gap:18px}
+/* 词条和商品共用杀戮尖塔式卡面语言：稀有度只控制边框与光晕色。 */
+.card,.shopItem{--rarity:#8d98a5;position:relative;overflow:hidden;color:#eaf4ff;background:radial-gradient(circle at 50% 24%,#31465a 0,#182531 42%,#0a1119 100%);border:2px solid var(--rarity);border-radius:13px;box-shadow:inset 0 0 0 2px #ffffff12,0 9px 18px #0008;text-align:center;transition:transform .18s,box-shadow .18s,filter .18s}
+.card.rare,.shopItem.rare{--rarity:#3e9dff}.card.epic,.shopItem.epic{--rarity:#b865ff}.card.legendary,.shopItem.legendary{--rarity:#f5bd3d}
+.card{width:230px;height:280px;padding:18px 16px 27px}.card em,.shopItem em{position:absolute;top:9px;left:50%;transform:translateX(-50%);font-style:normal;font-size:11px;letter-spacing:2px;color:var(--rarity)}
+.cardIcon{display:block;font-style:normal;font-size:55px;line-height:1;margin:32px auto 14px;filter:drop-shadow(0 4px 8px #000)}
+.card h3,.shopItem h3{font-size:21px;margin:7px 0;color:#fff}.card p,.shopItem p{font-size:13px;line-height:1.55;color:#aebdca;margin:8px 0}.cardOrnament{position:absolute;bottom:7px;left:14px;right:14px;color:var(--rarity);font-size:10px}.cardOrnament:before,.cardOrnament:after{content:'';display:inline-block;width:34%;height:1px;background:var(--rarity);vertical-align:middle;margin:0 7px}
+.card:hover:not(:disabled),.shopItem:hover:not(:disabled){transform:scale(1.05);box-shadow:0 0 25px color-mix(in srgb,var(--rarity) 70%,transparent),0 15px 26px #0009;z-index:2;background:radial-gradient(circle at 50% 24%,#3a5269,#182531 46%,#0a1119)}
+.card.selected{transform:scale(1.05);border-width:4px;box-shadow:0 0 28px var(--rarity),0 15px 28px #000b}
+.resultBox{min-width:340px;padding:35px;background:#f4fbff;border-top:3px solid var(--orange)}
+.settlement{width:min(1240px,96vw);max-height:94vh;overflow:auto;padding:24px;color:#173448;background:linear-gradient(145deg,#fffffffa,#dff4fff8);border:1px solid #8dd8f0;border-top:5px solid var(--orange);box-shadow:0 20px 80px #24597666}.settlement>h2{text-align:center;margin:0 0 18px;color:#e7662c}.settlementGrid{display:grid;grid-template-columns:1.25fr 1fr;gap:24px}.settlement section{min-width:0}.settlement section>h3{margin:0 0 12px;color:#173448}.settlement h3 small{font-size:12px;color:#159ecf}.settlement .cardRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.settlement .card{width:auto;height:285px}.shopBalance{margin:-34px 0 12px auto;width:max-content;padding:7px 13px;border:1px solid #66c9eb;background:#eefaff;font-weight:700;color:#b96b1e}.shopBalance span,.shopItem strong span{color:#ef8d27}.shopBalance b{color:#173448}.shopItems{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.shopItem{width:100%;height:210px;padding:13px}.shopItem .cardIcon{font-size:42px;margin:29px auto 8px}.shopItem h3{font-size:17px}.shopItem p{margin:4px}.shopItem strong{position:absolute;right:11px;bottom:23px;color:#f5cb66}.shopItem:disabled{cursor:not-allowed}.shopItem.unaffordable{filter:grayscale(1);opacity:.38}.shopItem.purchased{opacity:.55;filter:saturate(.5)}.shopItem mark{position:absolute;inset:0;display:grid;place-items:center;color:#baf5c8;background:#07130cc9;font-size:19px;font-weight:800}.shop.skipped .shopItems,.shop.skipped .shopBalance,.shop.skipped .skipShop{display:none}.shop.skipped:after{content:'已跳过商店';display:grid;place-items:center;height:180px;color:#5e7c8c}.skipShop{margin-top:12px}.settlement footer{margin-top:18px;display:flex;justify-content:flex-end;align-items:center;gap:16px}.choiceHint{color:#597787}.nextWave:disabled{opacity:.45;cursor:not-allowed}
+#hud{position:fixed;z-index:8;inset:0;pointer-events:none}
+#wave{position:absolute;top:20px;left:22px;font-weight:bold;letter-spacing:2px;text-shadow:1px 1px 3px #000}
+#boss{display:none;position:absolute;top:55px;left:25%;width:50%;height:18px;background:#321515;border:1px solid #a84}
+#boss.show{display:block}
+#boss span{position:absolute;width:100%;text-align:center;top:-22px}
+#boss i,#health i{display:block;height:100%;background:#a42c27;transition:width .2s}
+#buffs{position:absolute;left:18px;top:18%;display:flex;flex-direction:column;gap:5px}
+#buffs span{background:#eaf9f4e8;color:#16556c;border-left:3px solid #29c2eb;padding:6px 9px;font-size:12px}
+#health{position:absolute;left:25px;bottom:28px;width:220px;height:23px;background:#e9f7fbcc;border:1px solid #62c9ec;color:#163d52}
+#health b{position:absolute;bottom:28px}
+#health span{position:absolute;inset:2px;text-align:center;text-shadow:0 1px #fff}
+#weaponName{position:absolute;right:28px;bottom:68px;color:#ff873d;font-size:16px;letter-spacing:2px;text-shadow:0 1px 2px #fff}
+#ammo{position:absolute;right:28px;bottom:22px;font-size:38px;font-weight:bold}
+#ammo small{font-size:17px;color:#ddd}
+#kills{position:absolute;right:35px;top:30px}
+#economy{position:absolute;right:25px;top:240px;padding:7px 10px;background:#eaf9f4dc;border-left:3px solid #d59432;font-weight:700}#economy span{color:#d49a42}#economy b{color:#e082ff}
+#radar{position:absolute;right:18px;top:52px;width:180px;height:180px;filter:drop-shadow(0 4px 8px #0018)}
+#ammo.empowered{color:#ffd348;text-shadow:0 0 12px #ff9d21}
+#crosshair{position:absolute;left:50%;top:50%;--gap:8px;--kick:0px;transform:translateY(var(--kick));will-change:transform}
+#crosshair i{position:absolute;background:#fff;box-shadow:0 0 2px #000}
+#crosshair i:nth-child(1){width:9px;height:2px;right:var(--gap)}
+#crosshair i:nth-child(2){width:9px;height:2px;left:var(--gap)}
+#crosshair i:nth-child(3){width:2px;height:9px;bottom:var(--gap)}
+#crosshair i:nth-child(4){width:2px;height:9px;top:var(--gap)}
+#hit{position:absolute;left:50%;top:50%;transform:translate(-50%,-54%);font-size:38px;opacity:0}
+#hit.show{opacity:1;color:#fff}
+#hit.head{color:#ffb342}
+#hit.kill{color:#ffd340;font-size:46px}
+#damageFlash{position:absolute;inset:0;background:radial-gradient(transparent 40%,#b2161688);opacity:0;transition:.15s}
+#damageFlash.show{opacity:1}
+.damageNum{position:fixed;z-index:9;color:white;text-shadow:1px 1px 3px #000;pointer-events:none}
+.damageNum.head{color:#ffd040;font-size:20px}
+#mobile{position:fixed;z-index:12;inset:0;pointer-events:none}
+#mobile,#mobile *{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
+#mobile button{pointer-events:auto;position:absolute;border-radius:50%;padding:0;background:#eaf8ffdd;border:1px solid #38bce8;color:#15516d;opacity:.9;text-shadow:0 1px 2px #fff}
+.controlGroup{position:absolute;pointer-events:none}
+#moveControls{left:20px;bottom:18px;width:120px;height:120px}
+#actionControls{right:16px;bottom:12px;width:226px;height:220px}
+/* 和平精英式横屏布局：大开火键置于右下，功能键竖排并与枪模投影区域错开。 */
+#fire{right:4px;bottom:6px;width:92px;height:92px;font-size:17px;background:#ff744ddd!important;color:white!important;border:2px solid #fff}
+#reload{right:18px;bottom:114px;width:60px;height:60px;font-size:13px}
+#switchWeapon{right:92px;bottom:104px;width:60px;height:60px;font-size:13px}
+#jump{right:110px;bottom:16px;width:60px;height:60px;font-size:13px}
+#menuBtn{right:18px;top:16px;width:48px;height:48px;border-radius:10px!important;font-size:25px;line-height:1}
+#joystick{pointer-events:none;position:absolute;left:0;bottom:0;width:96px;height:96px;border:2px solid #dff8ffcc;background:#239bc755;border-radius:50%;display:grid;place-items:center;font-size:28px;color:#fff;opacity:.9}
+#finishLayout{display:none;position:fixed!important;left:50%;top:16px;transform:translateX(-50%);width:126px;height:48px;border-radius:24px!important;background:#ff7b42!important;color:#fff!important}
+.layout-editing #mobile{display:block}.layout-editing .controlGroup{pointer-events:auto;outline:2px dashed #fff;background:#21b8ed33;border-radius:18px}.layout-editing .controlGroup:before{content:attr(data-label);position:absolute;left:8px;top:-25px;color:#fff;font-weight:800;text-shadow:0 1px 4px #17506d}.layout-editing #finishLayout{display:block}.layout-editing #menuBtn{display:none}
+.resultBox button{margin-right:8px}
+.baseBox{width:min(820px,94vw);max-height:92vh;overflow:auto;padding:26px;background:#f5fcff;border-top:5px solid var(--orange);box-shadow:0 20px 80px #24597666}.baseBox header{display:flex;align-items:center;gap:24px}.baseBox header h2,.baseBox header p{margin:3px}.coreBalance,.coreEarned{color:#c77616;font-size:18px;font-weight:800}.baseWeapons,.talentList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.baseWeapons button,.talentList button{display:flex;justify-content:space-between;align-items:center;text-align:left}.baseWeapons small,.talentList small{display:block;margin-top:5px;font-weight:400}.talentList strong{white-space:nowrap;margin-left:12px;color:#b56d18}.baseMessage{min-height:24px;color:#e75e2d;font-weight:800}.weaponOption.locked{filter:grayscale(1);opacity:.58}.weaponOption.locked.selected{outline:none;box-shadow:none}
+@media(pointer:coarse){#mobile{display:block}
+#radar{right:4px;top:4px;width:128px;height:128px}
+#kills{right:142px;top:18px}
+#economy{right:6px;top:136px;font-size:12px}
+.panel h1{font-size:34px}
+.card{width:27vw;height:210px;padding:12px}
+.card h3{font-size:18px}
+.cardRow{gap:8px}
+.loadoutBox{padding:14px}.loadoutBox header{gap:8px}.loadoutBox header p{display:none}.weaponOption{flex:0 0 155px;min-height:92px}.mapOption{padding:10px}.mapOption i{font-size:32px;margin-right:8px}
+.baseBox{padding:14px}.baseWeapons,.talentList{grid-template-columns:1fr}
+.settlement{padding:14px;max-height:100vh}.settlementGrid{display:block}.settlement .cardRow,.shopItems{grid-template-columns:repeat(2,minmax(0,1fr))}.settlement .card{width:100%;height:240px}.settlement .shop{margin-top:24px}.settlement footer{position:sticky;bottom:-14px;background:#0d151ef2;padding:10px 0;z-index:3}
+#ammo{font-size:28px}
+}
+@media(pointer:fine){#editLayout{display:none}}
+/* 竖屏仍保持可操作：按可用宽度略缩控件，但不再遮挡游戏要求强制旋屏。 */
+@media(pointer:coarse) and (orientation:portrait){
+#moveControls{left:18px;bottom:20px}#actionControls{right:8px;bottom:8px}
+#health{left:14px;bottom:132px;width:150px}
+#weaponName{right:14px;bottom:200px}#ammo{right:14px;bottom:166px}
+.mapChoices{grid-template-columns:1fr}.loadoutBox header h2{font-size:20px}.loadoutBox h3{margin:10px 0 6px}
+.weaponGroup{grid-template-columns:76px 1fr}.weaponGroup h4{font-size:13px}.settlement .cardRow,.shopItems{grid-template-columns:1fr}.settlement .card,.shopItem{height:235px}
+}

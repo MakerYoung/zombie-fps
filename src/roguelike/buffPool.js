@@ -1,0 +1,38 @@
+const stat=(id,name,desc,rarity,key,value,mode='mul',negative=false)=>({id,name,desc,rarity,negative,apply(ctx,stack){ctx.stats.add(`${id}:${stack}`,key,value,mode);if(key==='armor')ctx.health.armor+=value;}});
+export const BUFF_POOL=[
+ stat('power','高爆火药','伤害 +20%','common','damage',1.2),stat('rapid','轻量枪机','射速 +18%','common','fireRate',1.18),stat('mag','扩容弹匣','弹匣 +35%','rare','magazine',1.35),stat('boots','战术跑鞋','移速 +16%','common','moveSpeed',1.16),stat('vital','强化体质','最大生命 +25','rare','maxHealth',25,'add'),stat('plate','陶瓷插板','护甲 +22','rare','armor',22,'add'),stat('crit','弱点透视','暴击率 +10%','rare','critChance',.1,'add'),stat('critd','致命校准','暴击伤害 +45%','epic','critDamage',.45,'add'),stat('reload','快手','换弹速度 +28%','common','reloadSpeed',1.28),stat('pellet','额外弹丸','每枪额外弹丸 +1','legendary','pellets',1,'add'),
+ stat('glass','玻璃大炮','伤害 +45%，最大生命 -18%','epic','damage',1.45),stat('glasshp','玻璃大炮·代价','最大生命 -18%','epic','maxHealth',.82,'mul',true),stat('berserk','狂战枪机','射速 +40%，弹匣 -20%','epic','fireRate',1.4),stat('smallmag','狂战枪机·代价','弹匣 -20%','epic','magazine',.8,'mul',true),stat('heavy','重装弹头','伤害 +32%，移速 -12%','rare','damage',1.32),stat('slow','重装弹头·代价','移速 -12%','rare','moveSpeed',.88,'mul',true),
+ stat('lifesteal','血液汲取','造成伤害回复 3%','epic','lifeSteal',.03,'add'),stat('boom','爆裂弹','命中产生 2.5 米爆炸','legendary','explosionRadius',2.5,'add'),
+ {id:'healKill',name:'收割者',desc:'每次击杀回复 5 生命',rarity:'rare',apply(c,s){c.listen(`healKill:${s}`,'enemy:killed',()=>c.health.heal(5));}},
+ {id:'armorKill',name:'临时护甲',desc:'击杀补充 2 点护甲',rarity:'common',apply(c,s){c.listen(`armorKill:${s}`,'enemy:killed',()=>c.health.armor=Math.min(50,c.health.armor+2));}},
+ {id:'double',name:'回声扳机',desc:'开火有 15% 概率不消耗弹药',rarity:'epic',apply(c,s){c.listen(`double:${s}`,'weapon:shoot',({weapon})=>{if(Math.random()<.15)weapon.ammo++});}},
+ {id:'panic',name:'濒死本能',desc:'受伤时短暂回复 8 生命',rarity:'rare',apply(c,s){c.listen(`panic:${s}`,'player:damaged',()=>setTimeout(()=>c.health.heal(8),900));}},
+ {id:'headheal',name:'外科医生',desc:'爆头回复 3 生命',rarity:'rare',apply(c,s){c.listen(`headheal:${s}`,'shot:hit',e=>e.headshot&&c.health.heal(3));}},
+ {id:'killrush',name:'猎杀冲动',desc:'击杀后短暂加速',rarity:'common',apply(c,s){c.listen(`killrush:${s}`,'enemy:killed',()=>{c.stats.add('rush','moveSpeed',1.5);setTimeout(()=>c.stats.remove('rush'),1800)});}},
+ {id:'reloadheal',name:'战地换弹',desc:'换弹完成回复 4 生命',rarity:'common',apply(c,s){c.listen(`reloadheal:${s}`,'weapon:reloaded',()=>c.health.heal(4));}},
+ stat('tank','堡垒协议','最大生命 +50%，移速 -15%','legendary','maxHealth',1.5),stat('tankslow','堡垒协议·代价','移速 -15%','legendary','moveSpeed',.85,'mul',true),stat('supermag','无底弹仓','弹匣 +70%，换弹速度 -18%','epic','magazine',1.7),stat('slowreload','无底弹仓·代价','换弹速度 -18%','epic','reloadSpeed',.82,'mul',true),
+ stat('precision','精密弹头','伤害 +12%，暴击率 +6%','common','damage',1.12),stat('precisioncrit','精密弹头·校准','暴击率 +6%','common','critChance',.06,'add'),stat('runner','肾上腺素','移速 +28%，最大生命 -10%','rare','moveSpeed',1.28),stat('runnerhp','肾上腺素·代价','最大生命 -10%','rare','maxHealth',.9),stat('kevlar','防弹纤维','护甲 +35','epic','armor',35,'add'),stat('maxcrit','黄金子弹','暴击率 +20%','legendary','critChance',.2,'add'),stat('storm','弹幕风暴','射速 +25%，弹匣 +25%','legendary','fireRate',1.25),stat('stormmag','弹幕风暴·弹仓','弹匣 +25%','legendary','magazine',1.25),
+ // 第二批 20 个独立词条：普通 8、稀有 7、史诗 4、传说 1。
+ stat('pistolExpert','手枪专家','手枪与手炮伤害 +25%','common','pistolDamage',1.25),
+ stat('autoMaster','全自动精通','全自动武器射速 +15%','common','autoFireRate',1.15),
+ stat('shotgunMaster','霰弹大师','霰弹武器弹丸 +2','rare','shotgunPellets',2,'add'),
+ stat('heavyRounds','重弹强化','强化重弹伤害 +40%','epic','heavyDamage',1.4),
+ stat('adrenaline','肾上腺爆发','低于 35% 生命时移速 +20%','common','lowHealthSpeed',1.2),
+ {id:'armorRegen',name:'护甲再生',desc:'每波开始恢复 20 护甲',rarity:'rare',apply(c,s){c.listen(`armorRegen:${s}`,'wave:start',()=>c.health.armor=Math.min(100,c.health.armor+20));}},
+ stat('vampirePlus','吸血强化','生命汲取效果 +50%','rare','lifeSteal',1.5),
+ stat('slideDodge','滑步','移动时有 10% 概率闪避伤害','common','dodgeChance',.1,'add'),
+ stat('bounce','弹跳','跳跃高度 +40%','common','jumpHeight',1.4),
+ stat('weakPoint','弱点打击','爆头伤害 +25%','rare','headshotDamage',1.25),
+ stat('barrage','弹幕','每次开火有 12% 概率触发双发','epic','doubleShotChance',.12,'add'),
+ stat('execution','处决','对低于 30% 生命敌人伤害 +30%','rare','executeDamage',1.3),
+ stat('piercing','穿透弹','子弹可额外穿透 1 名敌人','epic','penetration',1,'add'),
+ stat('ammoAffinity','弹药亲和','重弹量表与容量 +50%','common','heavyAmmo',1.5),
+ stat('skillSaver','技能减耗','技能冷却时间 -20%','rare','skillCooldown',.8),
+ stat('lucky','幸运','金币获取 +25%','common','coinGain',1.25),
+ stat('radarExpert','雷达专家','雷达探测范围 +50%','common','radarRange',1.5),
+ stat('combatMedic','战斗医师','生命汲取 +1.2%','rare','lifeSteal',.012,'add'),
+ stat('balancedGrip','平衡握把','换弹速度 +10%','epic','reloadSpeed',1.1),
+ stat('overdrive','超载协议','所有武器伤害 +20%','legendary','damage',1.2),
+];
+
+export const BATCH2_BUFF_IDS=['pistolExpert','autoMaster','shotgunMaster','heavyRounds','adrenaline','armorRegen','vampirePlus','slideDodge','bounce','weakPoint','barrage','execution','piercing','ammoAffinity','skillSaver','lucky','radarExpert','combatMedic','balancedGrip','overdrive'];

@@ -1,0 +1,25 @@
+import fs from 'node:fs';
+import {spawn,spawnSync} from 'node:child_process';
+import {chromium} from 'playwright';
+
+const output=new URL('../artifacts/art-rework/',import.meta.url);fs.mkdirSync(output,{recursive:true});
+const port=41731,server=spawn(process.platform==='win32'?'npm.cmd':'npm',['run','dev','--','--host','127.0.0.1','--port',String(port),'--strictPort'],{stdio:['ignore','pipe','pipe'],detached:process.platform!=='win32'});
+const report={screenshots:[],layout:{},tracer:{},weaponAnimation:{}};
+try{
+  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Vite 启动超时')),15000),ready=d=>{if(String(d).includes('Local:')){clearTimeout(timer);resolve();}};server.stdout.on('data',ready);server.stderr.on('data',ready);});
+  const browser=await chromium.launch({headless:true});
+  for(const viewport of [{width:812,height:375,mobile:true,name:'mobile-812x375'},{width:1280,height:720,mobile:false,name:'pc-1280x720'}]){
+    const context=await browser.newContext({viewport,screen:viewport,isMobile:viewport.mobile,hasTouch:viewport.mobile,deviceScaleFactor:1});const page=await context.newPage();
+    await page.goto(`http://127.0.0.1:${port}?verify=1`,{waitUntil:'networkidle'});await page.locator('#start').click();await page.waitForTimeout(700);
+    const image=new URL(`${viewport.name}.png`,output).pathname;await page.screenshot({path:image});report.screenshots.push(image);
+    const scene=await page.evaluate(()=>({fogType:window.__verifyGame.engine.scene.fog?.isFog?'linear':'other',fogNear:window.__verifyGame.engine.scene.fog?.near,exposure:window.__verifyGame.engine.renderer.toneMappingExposure,sky:Boolean(window.__verifyGame.engine.scene.getObjectByName('futureSky'))}));if(scene.fogType!=='linear'||scene.fogNear<100||scene.exposure<1.3||!scene.sky)throw new Error(`场景参数不合格 ${JSON.stringify(scene)}`);
+    if(viewport.mobile){await page.evaluate(()=>{localStorage.setItem('controlLayout.move',JSON.stringify({x:6.5,y:58}));localStorage.setItem('controlLayout.action',JSON.stringify({x:68,y:36}));});await page.reload({waitUntil:'networkidle'});const rects=await page.evaluate(()=>Object.fromEntries(['moveControls','actionControls'].map(id=>{const r=document.getElementById(id).getBoundingClientRect();return[id,{left:r.left,top:r.top,width:r.width,height:r.height}]})));report.layout=rects;const moveX=rects.moveControls.left/viewport.width*100,actionX=rects.actionControls.left/viewport.width*100;if(Math.abs(moveX-6.5)>.7||Math.abs(actionX-68)>.7)throw new Error(`布局持久化位置不正确 ${JSON.stringify(rects)}`);}
+    if(!viewport.mobile){const baseline=new URL('tracer-before.png',output).pathname,shot=new URL('tracer-shot-frame.png',output).pathname;await page.screenshot({path:baseline});const count=await page.evaluate(()=>{const g=window.__verifyGame;g.state='paused';g.shooting.fire({...g.weapon.data,pellets:1});g.engine.render();return g.shooting.tracers.filter(t=>t.line.visible).length;});await page.screenshot({path:shot});report.tracer.activeLines=count;report.tracer.before=baseline;report.tracer.shot=shot;
+      const checks=await page.evaluate(()=>{const g=window.__verifyGame,w=g.weapon;w.tryShoot();w.update(.018,false);const shot={z:w.group.position.z,pitch:w.group.rotation.x};for(let i=0;i<12;i++)w.update(.02,false);const returned={z:w.group.position.z,pitch:w.group.rotation.x};w.ammo=1;w.reload();w.update(w.reloadDuration*.2,false);const reload={drop:w.restPosition.y-w.group.position.y,tilt:w.group.rotation.z};g.shooting.tracers.forEach(t=>{t.life=0;t.line.visible=false;});g.switchWeapon('shotgun');g.shooting.fire(g.weapon.data);const pellets=g.shooting.tracers.filter(t=>t.line.visible).length;return{shot,returned,reload,pellets};});report.weaponAnimation=checks;if(checks.shot.z<=-1||checks.shot.pitch<=0||Math.abs(checks.returned.z+1)>.005||checks.reload.drop<.04||Math.abs(checks.reload.tilt)<.05||checks.pellets<8)throw new Error(`武器动画验收失败 ${JSON.stringify(checks)}`);}
+    await context.close();
+  }
+  await browser.close();
+  const py=`from PIL import Image,ImageChops,ImageStat\nimport json,sys\na=Image.open(sys.argv[1]).convert('RGB');b=Image.open(sys.argv[2]).convert('RGB');d=ImageChops.difference(a,b);d.save(sys.argv[3]);s=ImageStat.Stat(d);changed=sum(1 for p in d.getdata() if max(p)>15);print(json.dumps({'meanDiff':round(sum(s.mean)/3,4),'peakDiff':max(v[1] for v in d.getextrema()),'changedPixels':changed}))`;
+  const diff=new URL('tracer-diff.png',output).pathname,r=spawnSync('python3',['-c',py,report.tracer.before,report.tracer.shot,diff],{encoding:'utf8'});if(r.status)throw new Error(r.stderr);Object.assign(report.tracer,JSON.parse(r.stdout),{diff});if(report.tracer.activeLines<1||report.tracer.peakDiff<30||report.tracer.changedPixels<5)throw new Error(`tracer 差分不合格 ${JSON.stringify(report.tracer)}`);
+  fs.writeFileSync(new URL('verification.json',output),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
+}finally{if(process.platform==='win32')server.kill('SIGTERM');else try{process.kill(-server.pid,'SIGTERM');}catch{}}
