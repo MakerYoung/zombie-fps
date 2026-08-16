@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 export class PlayerController {
-  constructor(camera,input,map,stats,bus){this.camera=camera;this.input=input;this.map=map;this.stats=stats;this.bus=bus;this.velocity=new THREE.Vector3();this.yaw=0;this.pitch=0;this.pitchOffset=0;this.height=1.72;this.camera.position.set(0,this.height,8);this.grounded=true;this.stepDistance=0;this.leftFoot=false;
+  constructor(camera,input,map,stats,bus){this.camera=camera;this.input=input;this.map=map;this.stats=stats;this.bus=bus;this.velocity=new THREE.Vector3();this.yaw=0;this.pitch=0;this.pitchOffset=0;this.crosshairKick={x:0,y:0};this.height=1.72;this.camera.position.set(0,this.height,8);this.grounded=true;this.stepDistance=0;this.leftFoot=false;
     // 轻量 pitch 后坐力独立于鼠标视角，按枪种累积并在约 0.35 秒内平滑恢复。
-    bus.on('weapon:shoot',({data})=>{const kick={pistol:.004,smg:.003,shotgun:.011}[data.id]??.004;this.pitchOffset=Math.min(.025,this.pitchOffset+kick);});}
+    bus.on('weapon:shoot',({data})=>{const kick={pistol:.008,smg:.006,shotgun:.02}[data.id]??.008;this.pitchOffset=Math.min(.04,this.pitchOffset+kick);this.crosshairKick.x=(Math.random()*2-1)*3;this.crosshairKick.y=-(1+Math.random()*3);});}
   sensitivity(){const value=Math.max(1,Math.min(10,Number(localStorage.getItem('sensitivity'))||7));return value<=5?.001+(value-1)*.001:.005+(value-5)*.003;}
-  update(dt,active){if(!active)return;const look=this.input.consumeLook(),sens=this.sensitivity();this.yaw-=look.x*sens;this.pitch=Math.max(-1.45,Math.min(1.45,this.pitch-look.y*sens));this.pitchOffset*=Math.exp(-dt/.115);this.camera.rotation.set(this.pitch+this.pitchOffset,this.yaw,0);this.bus.emit('recoil:update',{pitchOffset:this.pitchOffset});
-    // 准星与同一个 pitchOffset 同步，连续开火时保持轻微上抬并自然回落。
-    if(typeof document!=='undefined')document.querySelector('#crosshair')?.style.setProperty('--kick',`${-Math.min(18,this.pitchOffset*2400)}px`);
+  update(dt,active){if(!active)return;const look=this.input.consumeLook(),sens=this.sensitivity();this.yaw-=look.x*sens;this.pitch=Math.max(-1.45,Math.min(1.45,this.pitch-look.y*sens));this.pitchOffset*=Math.exp(-dt/.115);const crosshairDecay=Math.exp(-dt/.04);this.crosshairKick.x*=crosshairDecay;this.crosshairKick.y*=crosshairDecay;this.camera.rotation.set(this.pitch+this.pitchOffset,this.yaw,0);this.bus.emit('recoil:update',{pitchOffset:this.pitchOffset,crosshairKick:{...this.crosshairKick}});
+    // 准星只保留短促微抖，主要后坐反馈由相机 pitch 承担。
+    if(typeof document!=='undefined'){const crosshair=document.querySelector('#crosshair');crosshair?.style.setProperty('--kick-x',`${this.crosshairKick.x}px`);crosshair?.style.setProperty('--kick-y',`${this.crosshairKick.y}px`);}
     const m=this.input.state.move,len=Math.hypot(m.x,m.y)||1,lowHealth=this.healthRatio?.()??1,speed=this.stats.get('moveSpeed')*(lowHealth<.35?this.stats.get('lowHealthSpeed'):1);const f=new THREE.Vector3(-Math.sin(this.yaw),0,-Math.cos(this.yaw)),r=new THREE.Vector3(Math.cos(this.yaw),0,-Math.sin(this.yaw));const delta=f.multiplyScalar(m.y/len).add(r.multiplyScalar(m.x/len)).multiplyScalar(speed*dt);
     // 分轴碰撞：某一轴被墙挡住时仍保留另一轴位移，从而沿墙自然滑动。
     const nextX=this.camera.position.clone();nextX.x+=delta.x;if(!this.map.collides(nextX,.38))this.camera.position.x=nextX.x;

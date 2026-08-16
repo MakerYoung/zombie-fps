@@ -4,7 +4,7 @@ import * as THREE from 'three';
 export function texture(kind){
   if(typeof document==='undefined'){const t=new THREE.DataTexture(new Uint8Array([150,150,150,255]),1,1);t.needsUpdate=true;return t;}
   const canvas=document.createElement('canvas');canvas.width=256;canvas.height=128;const c=canvas.getContext('2d');
-  const bg={steel:'#8d979d',camo:'#465344',wood:'#774426',ace:'#111318',khvostov:'#556149',icefire:'#176d92'}[kind]||'#555';c.fillStyle=bg;c.fillRect(0,0,256,128);
+  const bg={steel:'#8d979d',camo:'#465344',sleeve:'#172735',wood:'#774426',ace:'#111318',khvostov:'#556149',icefire:'#176d92'}[kind]||'#555';c.fillStyle=bg;c.fillRect(0,0,256,128);
   if(kind==='ace'){c.strokeStyle='#d9ad3e';c.lineWidth=5;c.strokeRect(7,7,242,114);c.font='bold 76px serif';c.fillStyle='#f1ce62';c.textAlign='center';c.fillText('♠',128,91);}
   else if(kind==='khvostov'){for(let x=0;x<256;x+=32){c.fillStyle=x%64?'#69765a':'#354136';c.fillRect(x,0,22,128);}c.fillStyle='#c5a646';c.fillRect(0,96,256,8);}
   else if(kind==='icefire'){const g=c.createLinearGradient(0,0,256,0);g.addColorStop(0,'#61dcff');g.addColorStop(.48,'#d9f7ff');g.addColorStop(.52,'#ffcf42');g.addColorStop(1,'#ff4d18');c.fillStyle=g;c.fillRect(0,0,256,128);for(let i=0;i<18;i++){c.strokeStyle=i%2?'#fff8':'#192d4c66';c.beginPath();c.moveTo(i*17,0);c.lineTo(i*17-25,128);c.stroke();}}
@@ -18,5 +18,16 @@ export function builder(){
   group.userData.partCount=0;
   const part=(geometry,material,p,r)=>{const mesh=new THREE.Mesh(geometry,material);mesh.position.set(...p);if(r)mesh.rotation.set(...r);mesh.castShadow=true;group.add(mesh);group.userData.partCount++;return mesh;};
   return {group,mat,part};
+}
+export function arm(group,{side='right',grip=[0,-.17,-.04],entry}={}){
+  const direction=side==='right'?1:-1,start=entry||[direction*.13,-.43,.22];
+  const sleeve=new THREE.MeshStandardMaterial({color:0x172735,map:texture('sleeve'),roughness:.78,metalness:.05});
+  const glove=new THREE.MeshStandardMaterial({color:0x24292d,map:texture('camo'),roughness:.7,metalness:.08});
+  const add=(geometry,material)=>{const mesh=new THREE.Mesh(geometry,material);mesh.castShadow=true;group.add(mesh);group.userData.partCount++;return mesh;};
+  const wrist=[grip[0]+direction*.025,grip[1]-.055,grip[2]+.035],mid=new THREE.Vector3(...start).add(new THREE.Vector3(...wrist)).multiplyScalar(.5);
+  const forearm=add(new THREE.CylinderGeometry(.048,.058,new THREE.Vector3(...start).distanceTo(new THREE.Vector3(...wrist)),12),sleeve);forearm.position.copy(mid);forearm.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...wrist).sub(new THREE.Vector3(...start)).normalize());
+  const hand=add(new THREE.SphereGeometry(.062,12,8),glove);hand.position.set(...grip);hand.scale.set(.78,1.05,1.25);hand.rotation.set(.2,0,direction*.12);
+  group.userData.armCount=(group.userData.armCount||0)+1;
+  return {forearm,hand};
 }
 export function muzzle(group,position,color=0xff9b38){const node=new THREE.Object3D();node.position.set(...position);const light=new THREE.PointLight(color,0,4);node.add(light);group.add(node);return {muzzle:node,muzzleLight:light};}

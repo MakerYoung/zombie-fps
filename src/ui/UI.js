@@ -283,12 +283,10 @@ export class UI {
     const px = 8 + v * 360;
     this.q("#crosshair").style.setProperty("--gap", `${px}px`);
   }
-  // 将弧度映射为约 10–18px 的视觉上跳，与相机 pitch 使用同一衰减源。
-  recoil(v) {
-    this.q("#crosshair").style.setProperty(
-      "--kick",
-      `${-Math.min(18, v * 2400)}px`,
-    );
+  recoil({ x = 0, y = 0 } = {}) {
+    const crosshair = this.q("#crosshair");
+    crosshair.style.setProperty("--kick-x", `${Math.max(-3, Math.min(3, x))}px`);
+    crosshair.style.setProperty("--kick-y", `${Math.max(-4, Math.min(0, y))}px`);
   }
   hitMarker(type) {
     const h = this.q("#hit");

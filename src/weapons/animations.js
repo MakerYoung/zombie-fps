@@ -3,9 +3,9 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 export function defaultAnims(overrides = {}) {
   const config = {
-    idle: { amplitude: .004, frequency: .008 },
+    idle: { amplitude: .002, frequency: .008 },
     reload: { drop: .075, roll: .42 },
-    moveSway: { maxPosition: .012, maxRotation: .02, rateScale: .004, decay: 6 },
+    moveSway: { maxPosition: .03, maxRotation: .045, rateScale: .004, decay: 4 },
   };
   for (const key of Object.keys(config)) Object.assign(config[key], overrides[key]);
   const swayByOwner = new WeakMap();

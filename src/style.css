@@ -42,7 +42,7 @@ button:hover{border-color:var(--orange);background:#fff5e9;transform:translateY(
 #economy{position:absolute;right:25px;top:240px;padding:7px 10px;background:#eaf9f4dc;border-left:3px solid #d59432;font-weight:700}#economy span{color:#d49a42}#economy b{color:#e082ff}
 #radar{position:absolute;right:18px;top:52px;width:180px;height:180px;filter:drop-shadow(0 4px 8px #0018)}
 #ammo.empowered{color:#ffd348;text-shadow:0 0 12px #ff9d21}
-#crosshair{position:absolute;left:50%;top:50%;--gap:8px;--kick:0px;transform:translateY(var(--kick));will-change:transform}
+#crosshair{position:absolute;left:50%;top:50%;--gap:8px;--kick-x:0px;--kick-y:0px;transform:translate(var(--kick-x),var(--kick-y));will-change:transform}
 #crosshair i{position:absolute;background:#fff;box-shadow:0 0 2px #000}
 #crosshair i:nth-child(1){width:9px;height:2px;right:var(--gap)}
 #crosshair i:nth-child(2){width:9px;height:2px;left:var(--gap)}

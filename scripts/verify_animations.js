@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
+import { defaultAnims } from '../src/weapons/animations.js';
 
 const port=4174,out=new URL('../artifacts/step1-anim/',import.meta.url);fs.mkdirSync(out,{recursive:true});
 let server=null;
@@ -38,9 +39,13 @@ try{
   report.assertions.weaponSwitch={pass:switchError<1e-4&&!switching.locked,error:round(switchError),elapsedSeconds:.4,locked:switching.locked};
   assert(report.assertions.weaponSwitch.pass,'Switched weapon did not return to rest');
 
-  const sway=await page.evaluate(()=>{const g=window.__verifyGame,w=g.weapon;let peak=0;for(let i=0;i<5;i++){g.engine.camera.rotation.y+=.05;w.update(1/60,false);peak=Math.max(peak,Math.abs(w.group.position.x-w.restPosition.x));}for(let i=0;i<60;i++)w.update(1/60,false);return{peak,recovered:Math.abs(w.group.position.x-w.restPosition.x)};});
-  report.assertions.moveSway={pass:sway.peak>0&&sway.recovered<1e-4,peakOffsetX:round(sway.peak),recoveryError:round(sway.recovered),decaySeconds:1};
+  const sway=await page.evaluate(()=>{const g=window.__verifyGame,w=g.weapon;let peak=0;for(let i=0;i<5;i++){g.engine.camera.rotation.y+=.15;w.update(1/60,false);peak=Math.max(peak,Math.abs(w.group.position.x-w.restPosition.x));}for(let i=0;i<90;i++)w.update(1/60,false);return{peak,recovered:Math.abs(w.group.position.x-w.restPosition.x)};});
+  report.assertions.moveSway={pass:Math.abs(sway.peak-.03)<1e-6&&sway.recovered<1e-4,peakOffsetX:round(sway.peak),expectedPeak:.03,recoveryError:round(sway.recovered),decaySeconds:1.5};
   assert(report.assertions.moveSway.pass,'Move sway did not appear and decay');
+
+  const idle=defaultAnims().config.idle;
+  report.assertions.idle={pass:idle.amplitude===.002&&idle.frequency===.008,...idle};
+  assert(report.assertions.idle.pass,'Default idle configuration changed unexpectedly');
 
   for(const size of [{width:812,height:375},{width:1280,height:720}]){
     await capture(page,size,'idle',()=>{const g=window.__verifyGame,w=g.weapon;g.state='menu';w.switchAnimation=null;w.switchLocked=false;w.reloading=0;w.fireTime=99;w.update(0,false);});
