@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { createEnemyModel } from './enemyModelFactory.js';
 
+const SWAY_AXIS=new THREE.Vector3(0,0,1);
+
 export class Enemy {
   constructor(scene,bus){this.scene=scene;this.bus=bus;this.group=new THREE.Group();this.group.visible=false;scene.add(this.group);this.parts=[];}
   spawn(typeId,type,pos,wave,scale={health:1,speed:1}){
@@ -22,7 +24,8 @@ export class Enemy {
   }
   applyAnimation(now,moving){
     const walk=this.anim.walkSwing,float=this.anim.float,phase=now*walk.frequency;
-    this.group.rotation.z=moving&&this.walkParts.length?Math.sin(phase)*walk.amplitude:0;
+    const sway=moving&&this.walkParts.length?Math.sin(phase)*walk.amplitude:0;
+    if(sway!==0)this.group.rotateOnAxis(SWAY_AXIS,sway);
     if(this.walkParts.length)this.parts.slice(2,8).forEach((part,index)=>{part.rotation.x=Math.sin(now*8*this.speed+index*Math.PI)*.42;});
     this.group.position.y=this.baseHoverY+(float.amplitude?Math.sin(now*float.frequency)*float.amplitude:0);
     this.model.group.userData.animate?.(now);
