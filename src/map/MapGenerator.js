@@ -1,57 +1,53 @@
 import * as THREE from 'three';
 import {addArenaDecor,animateArena,arenaMaterial,arenaTexture} from './TheFinalsStyle.js';
+import {MAP_DEFS} from './mapDefs.js';
 import {buildSafeSpawns,randomSafeSpawn} from './spawnSafety.js';
 
-export class MapGenerator {
-  constructor(scene){this.scene=scene;this.colliders=[];this.group=new THREE.Group();this.group.name='FutureBase60';this.textures={};this.size=60;this.bounds=30;this.playerSpawn={x:0,y:1.72,z:9,yaw:0};this.enemySpawns=[{x:-26,z:-25},{x:26,z:-22},{x:-26,z:22},{x:26,z:25}];scene.add(this.group);this.build();buildSafeSpawns(this);}
+export class MapGenerator{
+  constructor(scene,def=MAP_DEFS.base){
+    this.scene=scene;this.def=def;this.colliders=[];this.platforms=[];this.textures={};this.group=new THREE.Group();this.group.name=`Map:${def.id}`;
+    this.size=def.length;this.width=def.width;this.length=def.length;this.boundsX=def.boundsX;this.boundsZ=def.boundsZ;this.bounds=Math.max(def.boundsX,def.boundsZ);
+    this.playerSpawn={...def.playerSpawn};this.enemySpawns=def.enemySpawns.map(p=>({...p}));this.hasArenaDecor=false;scene.add(this.group);this.build();buildSafeSpawns(this);
+  }
   setActive(active){this.group.visible=active;this.active=active;}
-
-  // CanvasTexture 在本地生成材质细节，避免所有大型表面像单色塑料块。
-  texture(kind){
-    if(this.textures[kind])return this.textures[kind];
-    const canvas=document.createElement('canvas');canvas.width=canvas.height=256;const c=canvas.getContext('2d');
-    const fill=color=>{c.fillStyle=color;c.fillRect(0,0,256,256);};
-    if(kind==='ground'){
-      fill('#9fb4c4');c.strokeStyle='rgba(221,242,250,.7)';c.lineWidth=2;for(let n=0;n<=256;n+=32){c.beginPath();c.moveTo(n,0);c.lineTo(n,256);c.stroke();c.beginPath();c.moveTo(0,n);c.lineTo(256,n);c.stroke();}c.strokeStyle='rgba(52,112,145,.35)';c.lineWidth=1;for(let n=0;n<=256;n+=8){c.beginPath();c.moveTo(n,0);c.lineTo(n,256);c.stroke();}
-    }else if(kind==='brick'){
-      fill('#e7edf1');c.lineWidth=3;c.strokeStyle='#b4c6d0';for(let y=0;y<=256;y+=64){c.beginPath();c.moveTo(0,y);c.lineTo(256,y);c.stroke();}for(let x=0;x<=256;x+=64){c.beginPath();c.moveTo(x,0);c.lineTo(x,256);c.stroke();}c.fillStyle='#29bfff';c.fillRect(0,112,256,11);c.fillStyle='#d7f5ff';c.fillRect(0,114,256,3);
-    }else if(kind==='container'){
-      fill('#f3f5f6');for(let x=0;x<256;x+=32){c.fillStyle=x%64?'#ff8b38':'#ffad56';c.fillRect(x,0,18,256);c.fillStyle='#d7e0e5';c.fillRect(x+18,0,4,256);}c.fillStyle='#21c9ff';c.fillRect(0,38,256,10);c.fillStyle='#eaffff';c.fillRect(0,41,256,3);
-    }else if(kind==='vehicle'){
-      fill('#d8e4eb');c.fillStyle='#48758e';c.fillRect(0,42,256,50);c.fillRect(0,185,256,18);c.fillStyle='#62dcff';c.fillRect(0,46,256,8);
-      for(let i=0;i<170;i++){c.fillStyle=`rgba(185,198,190,${Math.random()*.18})`;c.fillRect(Math.random()*256,Math.random()*256,2+Math.random()*5,1+Math.random()*3);}
-    }else if(kind==='shack'){
-      fill('#edf3f6');for(let x=0;x<256;x+=28){c.fillStyle=x%56?'#d9e5eb':'#f8fbfc';c.fillRect(x,0,24,256);c.fillStyle='#8ca8b7';c.fillRect(x+24,0,4,256);}c.fillStyle='#56d5ff';c.fillRect(0,190,256,9);
-    }else{fill('#555b60');}
-    const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.anisotropy=4;this.textures[kind]=texture;return texture;
+  texture(kind,color='#47788d',number='TS-01'){
+    const key=`${kind}:${color}:${number}`;if(this.textures[key])return this.textures[key];
+    const canvas=document.createElement('canvas');canvas.width=512;canvas.height=256;const c=canvas.getContext('2d');c.fillStyle=color;c.fillRect(0,0,512,256);
+    if(kind==='deck'){c.fillStyle='#48535a';c.fillRect(0,0,512,256);c.strokeStyle='#68777e';c.lineWidth=3;for(let y=0;y<256;y+=16){c.beginPath();c.moveTo(0,y);c.lineTo(512,y);c.stroke();}for(let x=0;x<512;x+=32){c.fillStyle='rgba(20,27,31,.28)';c.fillRect(x,0,3,256);}for(let i=0;i<90;i++){c.fillStyle=i%3?'#303b40':'#9a5734';c.globalAlpha=.18;c.fillRect((i*73)%512,(i*47)%256,8+(i%17),2);}}
+    else if(kind==='container'){c.strokeStyle='rgba(10,25,31,.34)';c.lineWidth=5;for(let x=10;x<512;x+=28){c.beginPath();c.moveTo(x,0);c.lineTo(x,256);c.stroke();c.strokeStyle='rgba(255,255,255,.12)';c.beginPath();c.moveTo(x+5,0);c.lineTo(x+5,256);c.stroke();c.strokeStyle='rgba(10,25,31,.34)';}c.fillStyle='rgba(9,22,28,.72)';c.fillRect(22,172,210,55);c.fillStyle='#e8ecea';c.font='bold 31px monospace';c.fillText(number,34,209);c.strokeStyle='#d7ddd9';c.lineWidth=7;c.strokeRect(7,7,498,242);for(let i=0;i<22;i++){c.fillStyle='#6c3824';c.globalAlpha=.18+(i%4)*.04;c.fillRect((i*83)%490,(i*59)%240,18+i%24,3+i%5);}}
+    else{c.fillStyle='#5c6870';c.fillRect(0,0,512,256);c.strokeStyle='#273238';c.lineWidth=5;for(let x=0;x<512;x+=64)c.strokeRect(x,0,64,256);for(let i=0;i<35;i++){c.fillStyle='#a4512f';c.globalAlpha=.25;c.fillRect((i*97)%512,(i*43)%256,25,5);}}
+    c.globalAlpha=1;const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.anisotropy=4;this.textures[key]=texture;return texture;
   }
-
-  material(kind,w,d){const arenaKind=kind==='shack'?'glass':kind==='container'?'stripe':'concrete';return arenaMaterial(arenaKind,w,d);}
-  box(x,z,w,h,d,color=0x555b60,kind='brick',collide=true,role='wall'){const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),this.material(kind,w,Math.max(h,d)));mesh.position.set(x,h/2,z);mesh.castShadow=mesh.receiveShadow=true;mesh.userData.world=true;mesh.userData.collide=collide;mesh.userData.collisionRole=role;this.group.add(mesh);if(collide)this.colliders.push(new THREE.Box3().setFromObject(mesh));return mesh;}
-  // 屋顶只负责视觉遮盖；玩家和敌人的二维移动碰撞不能把整片室内地面封死。
-  roof(x,z,w,h,d,kind='shack'){return this.box(x,z,w,h,d,0,kind,false,'roof');}
-
-  build(){
-    const groundMap=arenaTexture('ground');groundMap.repeat.set(12,12);const ground=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshStandardMaterial({map:groundMap,roughness:.4,metalness:.18}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;ground.userData.world=true;this.group.add(ground);
-    // 60×60 紧凑基地：中央广场连接四个功能区，每个区至少有两条进出路线。
-    this.box(0,-30,60,4,1,0,'brick');this.box(0,30,60,4,1,0,'brick');this.box(-30,0,1,4,60,0,'brick');this.box(30,0,1,4,60,0,'brick');
-    // 西北集装箱堆叠区，错位留出 S 型穿行路线。
-    [[-21,-20,11,2.8,3],[-17,-15,3,2.8,9],[-25,-10,8,2.8,3],[-22,-20,6,5.6,3]].forEach(v=>this.box(...v,0,'container'));
-    // 东北掩体巷道。
-    [[13,-21,1,2.2,12],[21,-16,1,2.2,14],[17,-9,9,1.35,1],[26,-23,5,1.5,2]].forEach(v=>this.box(...v,0,'brick'));
-    // 西南维修间：四面墙均与视觉一致，南北各开门。
-    this.roof(-20,18,12,.35,10);this.box(-26,18,1,4,10,0,'shack');this.box(-14,18,1,4,10,0,'shack');
-    this.box(-23,13,6,4,1,0,'shack');this.box(-15.5,13,3,4,1,0,'shack');this.box(-24,23,4,4,1,0,'shack');this.box(-16,23,4,4,1,0,'shack');
-    // 东南双舱小建筑与高台（坡道侧留开放入口）。
-    this.roof(19,18,13,.4,10);this.box(12.5,18,1,3.6,10,0,'shack');this.box(25.5,18,1,3.6,10,0,'shack');this.box(16,13,6,3.6,1,0,'shack');this.box(23.5,13,4,3.6,1,0,'shack');this.box(19,23,13,3.6,1,0,'shack');
-    this.box(7,24,7,1.8,7,0,'vehicle');
-    // 中央广场低矮十字掩体，不堵塞四向主路线。
-    [[-6,0,4,1.1,1],[6,0,4,1.1,1],[0,-6,1,1.1,4],[0,6,1,1.1,4]].forEach(v=>this.box(...v,0,'brick'));
-    // 六组赛场点缀覆盖入口、中央广场和两翼，且全部不参与碰撞。
-    addArenaDecor(this.group,{size:60,holograms:[[0,4.2,-27,0],[-27,3.8,4,Math.PI/2]],floaters:[[-10,5.8,-3,'cube'],[11,6.4,2,'ring']],pillars:[[-9,-9,'cyan'],[9,9,'orange'],[-9,9,'orange'],[9,-9,'cyan']]});
+  material(kind,w,d,color,number){
+    if(['deck','hull'].includes(kind)||this.def.id==='transportShip'&&kind==='container')return new THREE.MeshStandardMaterial({map:this.texture(kind,color,number),color:0xffffff,metalness:.62,roughness:kind==='deck'?.42:.36});
+    return arenaMaterial(kind==='shack'?'glass':kind==='container'?'stripe':'concrete',w,d);
   }
-  update(time){animateArena(this.group,time);}
-  collides(pos,r){if(Math.abs(pos.x)>29.5||Math.abs(pos.z)>29.5)return true;return this.colliders.some(b=>pos.x+r>b.min.x&&pos.x-r<b.max.x&&pos.z+r>b.min.z&&pos.z-r<b.max.z&&pos.y>b.min.y-.2&&pos.y-1.7<b.max.y);}
-  surfaceAt(pos){return Math.abs(pos.x)<10&&Math.abs(pos.z)<10?'stone':'ground';}
+  box(x,z,w,h,d,color=0x555b60,kind='brick',collide=true,role='wall',y=0,number='TS-01',rotation=0){
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),this.material(kind,w,Math.max(h,d),color,number));mesh.position.set(x,y+h/2,z);mesh.rotation.y=rotation;mesh.castShadow=mesh.receiveShadow=true;mesh.userData.world=true;mesh.userData.collide=collide;mesh.userData.collisionRole=role;this.group.add(mesh);
+    if(collide){const bounds=new THREE.Box3().setFromObject(mesh);this.colliders.push(bounds);if(bounds.max.y>.25)this.platforms.push(bounds);}return mesh;
+  }
+  roof(x,z,w,h,d,kind='shack',y=0){return this.box(x,z,w,h,d,0,kind,false,'roof',y);}
+  container(item){return this.box(item.x,item.z,item.w,item.h,item.d,item.color,item.mat,true,'container',(item.y||0)+(item.level||0)*2.6,item.number,item.rotation||0);}
+  buildObject(item){
+    const collide=item.collide??!['roof','hull'].includes(item.t);const roles={wall:'wall',ledge:'wall',roof:'roof',container:'container',deck:collide?'platform':'deck',hull:'hull',platform:'platform'};
+    if(!(item.t in roles))throw new Error(`Unknown map object type: ${item.t}`);if(item.t==='container')return this.container(item);
+    return this.box(item.x,item.z,item.w,item.h,item.d,item.color,item.mat||'brick',collide,item.role||roles[item.t],item.y||0,item.number,item.rotation||0);
+  }
+  buildGround(){
+    if(this.def.ground.kind!=='ground')return;const map=arenaTexture('ground');map.repeat.set(this.def.ground.repeat,this.def.ground.repeat);const mesh=new THREE.Mesh(new THREE.PlaneGeometry(this.def.width,this.def.length),new THREE.MeshStandardMaterial({map,roughness:.4,metalness:.18}));mesh.rotation.x=-Math.PI/2;mesh.receiveShadow=true;mesh.userData.world=true;this.group.add(mesh);
+  }
+  makeDecor(item,batch){
+    if(item.t==='holo'){batch.holograms.push([item.x,item.y,item.z,item.ry||0]);this.hasArenaDecor=true;return;}
+    if(item.t==='floater'){batch.floaters.push([item.x,item.y,item.z,item.kind]);this.hasArenaDecor=true;return;}
+    if(item.t==='pillar'){batch.pillars.push([item.x,item.z,item.color]);this.hasArenaDecor=true;return;}
+    if(item.t==='line'){const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.16,item.len),new THREE.MeshBasicMaterial({color:0xe8c64b}));mesh.rotation.x=-Math.PI/2;mesh.rotation.z=item.ry||0;mesh.position.set(item.x,item.y??.012,item.z);this.group.add(mesh);return;}
+    if(item.t==='ring'){const mesh=new THREE.Mesh(new THREE.TorusGeometry(.55,.15,8,18),new THREE.MeshStandardMaterial({color:0xff6938,roughness:.45}));mesh.position.set(item.x,item.y,item.z);mesh.rotation.y=item.ry||0;this.group.add(mesh);return;}
+    throw new Error(`Unknown map decor type: ${item.t}`);
+  }
+  build(){this.buildGround();this.def.objects.forEach(item=>this.buildObject(item));const batch={size:this.def.ground.size,holograms:[],floaters:[],pillars:[]};this.def.decor.forEach(item=>this.makeDecor(item,batch));if(this.hasArenaDecor)addArenaDecor(this.group,batch);}
+  update(time){if(this.hasArenaDecor)animateArena(this.group,time);}
+  collides(pos,r){if(Math.abs(pos.x)+r>this.def.boundsX-.5||Math.abs(pos.z)+r>this.def.boundsZ-.5)return true;return this.colliders.some(b=>pos.x+r>b.min.x&&pos.x-r<b.max.x&&pos.z+r>b.min.z&&pos.z-r<b.max.z&&pos.y>b.min.y-.2&&pos.y-1.7<b.max.y);}
+  heightAt(pos,r=.32){let height=0;for(const b of this.platforms)if(pos.x+r>b.min.x&&pos.x-r<b.max.x&&pos.z+r>b.min.z&&pos.z-r<b.max.z&&b.max.y<=pos.y-1.45)height=Math.max(height,b.max.y);return height;}
+  surfaceAt(pos){return this.def.id==='base'&&Math.abs(pos.x)<10&&Math.abs(pos.z)<10?'stone':this.def.ground.kind==='deck'?'stone':'ground';}
   randomEdge(){return randomSafeSpawn(this);}
 }

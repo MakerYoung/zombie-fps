@@ -13,7 +13,7 @@ three.js 3D FPS 僵尸 Roguelike,浏览器双端(PC 键鼠+手机触控)。
 
 ## 架构(已实现)
 - src/core/:Engine(明亮天空盒/冷白天光/极淡雾)、GameLoop、EventBus、Game(状态机:menu→loadout→playing→choice→dead)
-- src/map/:MapGenerator(未来基地 60x60)、TransportShipMap(运输船 96x42)、spawnSafety.js(出生点安全预扫描,防刷进墙)
+- src/map/:mapDefs 地图注册表、MapGenerator 通用加载器、spawnSafety(出生点安全预扫描,防刷进墙)
 - src/weapons/:注册表 WEAPONS+WEAPON_CATEGORIES(3类:pistol手枪手炮/auto全自动/shotgun霰弹)+独立武器文件(modelUtils.js 提供 builder/muzzle)
 - src/player/:Weapon(通用运行时:切枪动画/换弹分步/后座)、PlayerController(分轴滑墙/灵敏度/后坐力pitch)、Stats(Buffable修饰符)、Health
 - src/enemies/:EnemyManager(对象池/队列)、Enemy(近战追踪+5方向避障)、enemyTypes.js

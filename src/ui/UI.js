@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { MAP_DEFS } from "../map/mapDefs.js";
 import { WEAPON_CATEGORIES, weaponsByCategory } from "../weapons/weaponData.js";
 import { LOCKED_WEAPONS, TALENTS, TALENT_PRICES, WEAPON_UNLOCK_PRICE } from "../progression/Progression.js";
 export class UI {
@@ -75,26 +76,13 @@ export class UI {
     this.q(".talentList").onclick=e=>{const b=e.target.closest('[data-talent]');if(!b)return;const r=this.progression.upgradeTalent(b.dataset.talent);this.notify(r.ok?`天赋升级至 ${r.level} 级`:r.reason==='cores'?'数据核心不足':'已达到最高等级');this.renderBase();};
   }
   renderLoadout() {
-    const maps = [
-        {
-          id: "base",
-          icon: "⬡",
-          name: "未来基地",
-          desc: "开阔环形基地，适合灵活走位",
-        },
-        {
-          id: "transportShip",
-          icon: "▰",
-          name: "运输船",
-          desc: "海上货船甲板，集装箱立体交火",
-        },
-      ],
+    const maps = Object.values(MAP_DEFS),
       mapRow = this.q(".mapChoices"),
       weaponRow = this.q(".weaponChoices");
     mapRow.innerHTML = maps
       .map(
         (m) =>
-          `<button class="mapOption ${m.id === this.selection.mapId ? "selected" : ""}" data-map="${m.id}"><i>${m.icon}</i><span><b>${m.name}</b><small>${m.desc}</small></span></button>`,
+          `<button class="mapOption ${m.id === this.selection.mapId ? "selected" : ""}" data-map="${m.id}"><i>⬡</i><span><b>${m.name}</b><small>${m.length} × ${m.width} 作战区域</small></span></button>`,
       )
       .join("");
     weaponRow.innerHTML = WEAPON_CATEGORIES.map(

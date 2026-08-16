@@ -4,17 +4,17 @@ import * as THREE from 'three';
 const noop=()=>{};
 global.document={createElement:()=>({width:0,height:0,getContext:()=>({fillStyle:'',strokeStyle:'',lineWidth:0,font:'',textAlign:'',fillRect:noop,strokeRect:noop,beginPath:noop,moveTo:noop,lineTo:noop,stroke:noop,fillText:noop})})};
 
-const [{MapGenerator},{TransportShipMap},{EnemyManager},{EventBus}]=await Promise.all([
+const [{MapGenerator},{MAP_DEFS},{EnemyManager},{EventBus}]=await Promise.all([
   import('../src/map/MapGenerator.js'),
-  import('../src/map/TransportShipMap.js'),
+  import('../src/map/mapDefs.js'),
   import('../src/enemies/EnemyManager.js'),
   import('../src/core/EventBus.js')
 ]);
 
 const reports=[];
-for(const [name,Map] of [['FutureBase60',MapGenerator],['TransportShipMap90',TransportShipMap]]){
+for(const [name,def] of Object.entries(MAP_DEFS)){
   const scene=new THREE.Scene();
-  const map=new Map(scene);
+  const map=new MapGenerator(scene,def);
   assert.ok(map.safeSpawns.length>0,`${name}: safeSpawns 为空`);
   assert.ok(map.safeSpawnsByRegion.filter(points=>points.length).length>1,`${name}: 合法点只覆盖一个出生区`);
 

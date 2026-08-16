@@ -5,7 +5,7 @@ import * as THREE from 'three';
 const noop=()=>{};
 global.document={createElement:()=>({width:0,height:0,getContext:()=>({fillStyle:'',strokeStyle:'',lineWidth:0,font:'',globalAlpha:1,fillRect:noop,strokeRect:noop,beginPath:noop,moveTo:noop,lineTo:noop,stroke:noop,fillText:noop})})};
 const {MapGenerator}=await import('../src/map/MapGenerator.js');
-const {TransportShipMap}=await import('../src/map/TransportShipMap.js');
+const {MAP_DEFS}=await import('../src/map/mapDefs.js');
 const {Enemy}=await import('../src/enemies/Enemy.js');
 
 const playerY=1.72,radius=.42;
@@ -14,7 +14,7 @@ function roomSamples(cx,cz,width,depth){const points=[];for(let z=0;z<4;z++)for(
 function verifyPath(map,coords,label){for(const [x,z] of coords)assert.equal(map.collides(point(x,z),radius),false,`${label} 在 (${x}, ${z}) 被阻挡`);return coords.length;}
 function straightPath(x,z0,z1,step=.25){const out=[];for(let z=z0;z<=z1+1e-6;z+=step)out.push([x,+z.toFixed(3)]);for(let z=z1;z>=z0-1e-6;z-=step)out.push([x,+z.toFixed(3)]);return out;}
 
-const base=new MapGenerator(new THREE.Scene()),ship=new TransportShipMap(new THREE.Scene());
+const base=new MapGenerator(new THREE.Scene(),MAP_DEFS.base),ship=new MapGenerator(new THREE.Scene(),MAP_DEFS.transportShip);
 const rooms=[
   {name:'西南维修间',points:roomSamples(-20,18,9,7),door:straightPath(-18.5,11.5,19)},
   {name:'东南双舱',points:roomSamples(19,18,10,7),door:straightPath(20.25,11.5,19)}

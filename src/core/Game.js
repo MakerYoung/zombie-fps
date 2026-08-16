@@ -4,7 +4,7 @@ import { Engine } from "./Engine.js";
 import { GameLoop } from "./GameLoop.js";
 import { InputManager } from "../input/InputManager.js";
 import { MapGenerator } from "../map/MapGenerator.js";
-import { TransportShipMap } from "../map/TransportShipMap.js";
+import { MAP_DEFS, MAP_IDS } from "../map/mapDefs.js";
 import { Stats } from "../player/Stats.js";
 import { Health } from "../player/Health.js";
 import { PlayerController } from "../player/PlayerController.js";
@@ -36,10 +36,7 @@ export class Game {
     this.quality = matchMedia("(pointer:coarse)").matches ? "low" : "high";
     this.engine = new Engine(root, this.quality);
     this.input = new InputManager(this.engine.renderer.domElement, ui);
-    this.maps = {
-      base: new MapGenerator(this.engine.scene),
-      transportShip: new TransportShipMap(this.engine.scene),
-    };
+    this.maps = Object.fromEntries(Object.entries(MAP_DEFS).map(([id,def])=>[id,new MapGenerator(this.engine.scene,def)]));
     const requested = new URLSearchParams(location.search).get("map") || "base";
     this.map = null;
     this.setActive(this.maps[requested] || this.maps.base);
@@ -187,11 +184,8 @@ export class Game {
       if (this.state === "playing" && /^Digit[1-3]$/.test(e.code))
         this.switchWeapon(+e.code.at(-1) - 1);
       if (e.code === "KeyM") {
-        this.setActive(
-          this.map === this.maps.transportShip
-            ? this.maps.base
-            : this.maps.transportShip,
-        );
+        const current=MAP_IDS.findIndex(id=>this.maps[id]===this.map);
+        this.setActive(this.maps[MAP_IDS[(current+1)%MAP_IDS.length]]);
         this.startPosition();
       }
     });
