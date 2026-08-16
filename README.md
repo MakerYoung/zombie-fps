@@ -43,12 +43,73 @@ npm run preview
 
 ### 新增武器
 
-在 `src/weapons/weaponData.js` 的 `WEAPONS` 中增加一项，配置伤害、射速、弹匣、备弹、换弹、扩散、后坐力、弹丸数和自动射击。若要让玩家直接切换，再在 `Game.bind()` 的键位数组中加入该 ID；射击核心无需修改。
+每把武器是 `src/weapons/<id>.js` 中的独立对象。可复制 `src/weapons/longbow.js`，保留以下结构：
+
+```js
+import * as THREE from 'three';
+import { arm, builder, muzzle } from './modelUtils.js';
+import { defaultAnims } from './animations.js';
+
+export const example = {
+  id: 'example', category: 'pistol', name: '示例', desc: '选装说明', rarity: 'rare',
+  damage: 30, fireRate: 2, magazine: 8, reserve: Infinity, reload: 1.8,
+  spread: .01, recoil: .04, pellets: 1, auto: false, headshotMultiplier: 2,
+  anims: defaultAnims({ idle: { amplitude: .002 } }),
+  makeModel() {
+    const { group, mat, part } = builder();
+    part(new THREE.BoxGeometry(.2, .2, .6), mat(0x333333, 'steel'), [0, 0, -.4]);
+    arm(group); // 可再加 arm(group, { side: 'left', ... })
+    return { ...muzzle(group, [0, 0, -.8]), group };
+  },
+  effects: { onShoot() {}, onHit() {}, onKill() {}, onReload() {} },
+};
+```
+
+字段说明：`category` 必须是 `pistol / auto / shotgun`；`rarity` 控制选装卡样式；`damage` 是单弹伤害，`fireRate` 是每秒射速，`magazine` 是弹匣，`reserve` 可为 `Infinity`，`reload` 单位为秒；`spread` 是弧度散布，`recoil` 驱动枪模和视角反馈，`pellets` 是每枪弹丸数，`auto` 控制按住连射，`headshotMultiplier` 是爆头倍率。`makeModel()` 必须返回 `{group,muzzle,muzzleLight}`，用 `builder()` 提供的 `mat/part` 搭模型，并用 `arm()` 衔接持枪手臂。`defaultAnims(overrides)` 可覆盖 `idle/reload/moveSway`；效果钩子的上下文包含武器、命中敌人和游戏实例，未使用的钩子可为空函数。
+
+最后在 `src/weapons/weaponData.js` 导入对象并加入 `WEAPONS` 构建数组。类别会自动进入对应选装槽，切枪无需改系统代码。默认情况下，新 ID 不在 `Progression.js` 的 `LOCKED_WEAPONS` 就会直接解锁；若它是核心解锁武器，才把 ID 加入该常量。
+
+### 新增敌人
+
+在 `src/enemies/enemyTypes.js` 的 `ENEMY_TYPES` 添加条目：
+
+```js
+striker: {
+  name: '迅捷猎手', role: 'melee', health: 60, speed: 4.5,
+  damage: 12, range: 1.1, scale: .88, color: 0x53ff8f,
+  accent: 0x22c55e, score: 1, coinValue: 6,
+  anim: { walkSwing: { amplitude: .09, frequency: 10 } },
+}
+```
+
+必填字段为 `name/role/health/speed/damage/range/scale/color/accent/score/coinValue`。远程单位还应给出 `preferred/projectile/projectileSpeed`，并可使用 `burst` 或 `charge`。可选 `armor/boss` 改变既有通用行为。可选动画为 `anim.walkSwing.{amplitude,frequency}` 与 `anim.float.{amplitude,frequency}`，未填走默认值。
+
+纯数据路线不写模型，自动使用通用类人形工厂，参考 `striker`。自定义路线新增 `src/enemies/enemyModels/<id>.js`，导出签名 `(def, owner) => ({group, parts})` 的函数，并在类型条目的 `model` 字段引用；每个可命中 mesh 要设置 `userData.enemy=owner` 与 `userData.baseEmissive`，参考 `enemyModels/drone.js`。
+
+把 ID 插入 `ENEMY_ORDER`，并在 `unlockWave` 映射登记首次波次。`WaveManager` 会从二者自动构造解锁池，并保证解锁波至少登场一次；只有新角色需要全新 AI 或音效规则时才修改系统。
+
+### 新增地图
+
+在 `src/map/mapDefs.js` 的 `MAP_DEFS` 添加一份数据，参考 `borderPost`：
+
+```js
+exampleMap: {
+  id: 'exampleMap', name: '示例地图', desc: '选图界面的故事说明',
+  width: 60, length: 40, boundsX: 30, boundsZ: 20,
+  ground: { kind: 'ground', size: 60, repeat: 10 },
+  playerSpawn: { x: 0, y: 1.72, z: 8, yaw: 0 },
+  enemySpawns: [{ x: -26, z: -15 }, { x: 26, z: 15 }],
+  objects: [{ t: 'wall', x: 0, z: -20, w: 60, h: 3, d: 1, mat: 'brick' }],
+  decor: [{ t: 'pillar', x: 8, z: 8, color: 'orange' }],
+}
+```
+
+`width/length` 是地面尺寸，`boundsX/boundsZ` 是中心到边界的半径；出生点必须不碰撞，敌人出生点应分散且位于开阔区域。`ground.kind` 为 `ground` 或 `deck`，`repeat` 控制程序纹理重复。
+
+所有 object 都用 `x/z/w/h/d`，可选 `mat/y/color/number/level/rotation/collide/role`。类型如下：`wall` 是碰撞墙；`roof` 仅视觉；`container` 支持 `level` 堆叠、编号和旋转；`deck` 是甲板或可站面；`platform` 是台阶/低平台；`hull` 是无碰撞船体。现有材质名包括 `brick/container/vehicle/shack/steel/wood/deck/hull`。
+
+decor 类型如下：`holo` 使用 `x/y/z/ry`；`floater` 另有 `kind: cube|ring`；`pillar` 使用 `color: cyan|orange`；`line` 使用 `len` 和可选 `ry`；`ring` 使用 `x/y/z/ry`。未知 object 或 decor 类型会立即抛错。注册表由 `Game` 和选图 UI 自动遍历，无需修改加载代码；完成后用 `new MapGenerator(scene, MAP_DEFS.exampleMap)` 检查出生点、墙体和平台碰撞。
 
 ### 新增词条
 
 在 `src/roguelike/buffPool.js` 添加配置。纯数值词条使用 `stat()`；事件词条提供 `apply(context, stack)`，通过 `context.listen()` 订阅 `weapon:shoot`、`shot:hit`、`enemy:killed`、`player:damaged` 或 `weapon:reloaded`。监听器会随一局结束卸载。
-
-### 新增僵尸
-
-在 `src/enemies/enemyTypes.js` 添加类型数据（生命、速度、伤害、缩放、颜色等），然后在 `WaveManager` 的生成规则中引用其 ID。所有类型复用 `Enemy` 的程序化人形、动画、碰撞与反馈；特殊行为可通过类型字段和事件实现。

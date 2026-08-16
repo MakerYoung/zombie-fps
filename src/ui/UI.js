@@ -82,7 +82,7 @@ export class UI {
     mapRow.innerHTML = maps
       .map(
         (m) =>
-          `<button class="mapOption ${m.id === this.selection.mapId ? "selected" : ""}" data-map="${m.id}"><i>⬡</i><span><b>${m.name}</b><small>${m.length} × ${m.width} 作战区域</small></span></button>`,
+          `<button class="mapOption ${m.id === this.selection.mapId ? "selected" : ""}" data-map="${m.id}"><i>⬡</i><span><b>${m.name}</b><small>${m.desc || `${m.length} × ${m.width} 作战区域`}</small></span></button>`,
       )
       .join("");
     weaponRow.innerHTML = WEAPON_CATEGORIES.map(

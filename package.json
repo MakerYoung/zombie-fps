@@ -14,11 +14,12 @@
     "verify:view": "node scripts/verify_view.js",
     "verify:animations": "node scripts/verify_animations.js",
     "verify:enemy-models": "node scripts/verify_enemy_models.js",
+    "verify:template": "node scripts/verify_template.js",
     "verify:batch2": "node scripts/verify_batch2.js",
     "verify:batch3": "node scripts/verify_batch3.js",
     "verify:batch4": "node scripts/verify_batch4.js",
-    "verify:batch5": "node scripts/verify_batch5.js"
-    ,"verify:batch6": "node scripts/verify_batch6.js"
+    "verify:batch5": "node scripts/verify_batch5.js",
+    "verify:batch6": "node scripts/verify_batch6.js"
   },
   "keywords": [],
   "author": "",

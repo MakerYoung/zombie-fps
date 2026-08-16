@@ -1,6 +1,6 @@
-import { pistol } from './pistol.js';import { smg } from './smg.js';import { shotgun } from './shotgun.js';import { aceOfSpades } from './aceOfSpades.js';import { khvostov } from './khvostov.js';import { conditionalFinality } from './conditionalFinality.js';
+import { pistol } from './pistol.js';import { smg } from './smg.js';import { shotgun } from './shotgun.js';import { aceOfSpades } from './aceOfSpades.js';import { khvostov } from './khvostov.js';import { conditionalFinality } from './conditionalFinality.js';import { longbow } from './longbow.js';
 // 统一注册表：新增枪械只需独立导出定义并在此登记。
-export const WEAPONS=Object.fromEntries([pistol,smg,shotgun,aceOfSpades,khvostov,conditionalFinality].map(w=>[w.id,w]));
+export const WEAPONS=Object.fromEntries([pistol,smg,shotgun,aceOfSpades,khvostov,conditionalFinality,longbow].map(w=>[w.id,w]));
 export const WEAPON_IDS=Object.keys(WEAPONS);
 // 类别顺序同时决定装备槽与数字键顺序；注册新武器时只需声明 category。
 export const WEAPON_CATEGORIES=[
