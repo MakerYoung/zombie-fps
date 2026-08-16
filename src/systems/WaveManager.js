@@ -1,4 +1,4 @@
-import { unlockWave } from '../enemies/enemyTypes.js';
+import { ENEMY_ORDER, unlockWave } from '../enemies/enemyTypes.js';
 
 const RHYTHM=['rest','small','large']; // wave % 3: 1 小、2 大、0 喘息
 const BASE={easy:{count:.8,health:.85,speed:.92,mix:.75},normal:{count:1,health:1,speed:1,mix:1},hard:{count:1.25,health:1.2,speed:1.1,mix:1.3}};
@@ -13,7 +13,7 @@ export function planWave(wave,{difficulty='normal',strength=0,boss=false}={}){
   const scale=buildScale(strength,difficulty),rhythm=RHYTHM[wave%3];
   if(boss){const composition=wave===5?{boss:1,rocketeer:1}:{boss:1};return {wave,rhythm:'boss',boss:true,dropMultiplier:2,scale,composition,sequence:sequence(composition)};}
   const baseCount=rhythm==='large'?10+wave*2:rhythm==='rest'?3+Math.ceil(wave*.65):5+wave;
-  const total=Math.max(2,Math.round(baseCount*scale.count)),unlocked=['assault','shooter','heavy','rocketeer','exploder','sniper'].filter(t=>unlockWave(t)<=wave),c={};
+  const total=Math.max(2,Math.round(baseCount*scale.count)),unlocked=ENEMY_ORDER.filter(t=>t!=='boss'&&unlockWave(t)<=wave),c={};
   if(wave<=2)c.assault=total;
   else if(rhythm==='large'){
     // 大波优先使用明确协同组合，再用突击兵填充规模。

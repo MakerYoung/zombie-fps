@@ -22,7 +22,7 @@ export function createEnemyModel(type,def,owner){
   parts.push(mesh(g,new THREE.SphereGeometry(.27,10,7),glow,'head',[0,1.73,0]));
   for(const side of [-1,1]){
     parts.push(mesh(g,new THREE.BoxGeometry(.2,.68,.22),suit,'body',[side*.48,1.1,0]));
-    parts.push(mesh(g,new THREE.BoxGeometry(.24,.72,.28),suit,'body',[side*.2,.38,0]));
+    const leg=mesh(g,new THREE.BoxGeometry(.24,.72,.28),suit,'body',[side*.2,.38,0]);leg.userData.walkLimb=true;parts.push(leg);
     parts.push(mesh(g,new THREE.BoxGeometry(.3,.2,.4),armor,'body',[side*.2,.08,-.05]));
   }
   parts.push(mesh(g,new THREE.BoxGeometry(.78,.2,.5),armor,'body',[0,1.42,0]));

@@ -4,18 +4,28 @@ import { createEnemyModel } from './enemyModelFactory.js';
 export class Enemy {
   constructor(scene,bus){this.scene=scene;this.bus=bus;this.group=new THREE.Group();this.group.visible=false;scene.add(this.group);this.parts=[];}
   spawn(typeId,type,pos,wave,scale={health:1,speed:1}){
-    this.group.remove(...this.group.children);const model=createEnemyModel(typeId,type,this);this.group.add(model.group);this.parts=model.parts;
+    this.group.remove(...this.group.children);this.model=type.model?type.model(type,this):createEnemyModel(typeId,type,this);this.group.add(this.model.group);this.parts=this.model.parts;
     this.type=typeId;this.def={...type};this.maxHealth=type.health*(1+(wave-1)*.11)*scale.health;this.health=this.maxHealth;this.baseSpeed=type.speed*(1+Math.min(wave*.015,.25))*scale.speed;this.speed=this.baseSpeed;
-    this.group.scale.setScalar(type.scale);this.group.position.set(pos.x,0,pos.z);this.group.rotation.set(0,0,0);this.group.visible=true;this.alive=true;this.attackCd=.4;this.moveSoundCd=.2;this.phase=1;this.charge=0;this.warn=0;this.slowTimer=0;this.burnTimer=0;this.burnTick=0;this.burstLeft=0;this.lastAvoidDir=0;this.avoidHeading=null;
+    this.anim={walkSwing:{amplitude:.05,frequency:8},float:{amplitude:0,frequency:0},...type.anim,walkSwing:{amplitude:.05,frequency:8,...type.anim?.walkSwing},float:{amplitude:0,frequency:0,...type.anim?.float}};this.walkParts=this.parts.filter(p=>p.userData.walkLimb);
+    this.group.scale.setScalar(type.scale);this.group.position.set(pos.x,0,pos.z);this.baseHoverY=0;this.group.rotation.set(0,0,0);this.group.visible=true;this.alive=true;this.attackCd=.4;this.moveSoundCd=.2;this.phase=1;this.charge=0;this.warn=0;this.slowTimer=0;this.burnTimer=0;this.burnTick=0;this.burstLeft=0;this.lastAvoidDir=0;this.avoidHeading=null;
   }
   update(dt,player,map){
     if(!this.alive)return;this.attackCd-=dt;this.moveSoundCd-=dt;if(this.moveSoundCd<=0){this.moveSoundCd=1.2+Math.random()*.6;this.bus.emit('enemy:move',{enemy:this,enemyType:this.type,position:this.group.position});}
     if(this.slowTimer>0){this.slowTimer-=dt;this.speed=this.baseSpeed*.6;}else this.speed=this.baseSpeed;
     if(this.burnTimer>0&&(this.burnTimer-=dt)>0&&(this.burnTick-=dt)<=0){this.burnTick=1;this.hit(8);}
     const target=player.position.clone().setY(0),delta=target.sub(this.group.position),dist=delta.length(),dir=delta.normalize();
+    const beforeX=this.group.position.x,beforeZ=this.group.position.z;
     if(this.def.role==='ranged'||this.def.role==='sniper')this.updateRanged(dt,dist,dir,map);
     else this.updateMelee(dt,dist,dir,map);
-    this.group.lookAt(player.position.x,0,player.position.z);const t=performance.now()*.008*this.speed;this.parts.slice(2,8).forEach((p,i)=>p.rotation.x=Math.sin(t+i*Math.PI)*.42);
+    const now=performance.now()/1000,moving=Math.hypot(this.group.position.x-beforeX,this.group.position.z-beforeZ)>1e-6;
+    this.group.lookAt(player.position.x,this.anim.float.amplitude?this.group.position.y:0,player.position.z);this.applyAnimation(now,moving);
+  }
+  applyAnimation(now,moving){
+    const walk=this.anim.walkSwing,float=this.anim.float,phase=now*walk.frequency;
+    this.group.rotation.z=moving&&this.walkParts.length?Math.sin(phase)*walk.amplitude:0;
+    if(this.walkParts.length)this.parts.slice(2,8).forEach((part,index)=>{part.rotation.x=Math.sin(now*8*this.speed+index*Math.PI)*.42;});
+    this.group.position.y=this.baseHoverY+(float.amplitude?Math.sin(now*float.frequency)*float.amplitude:0);
+    this.model.group.userData.animate?.(now);
   }
   move(dir,amount,map){
     if(amount<=0||dir.lengthSq()===0)return false;

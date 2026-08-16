@@ -102,7 +102,7 @@ export class AudioSystem {
   }
 
   enemyRegistry() {
-    const profiles={assault:[135,760],heavy:[82,420],exploder:[210,1250],shooter:[330,2100],rocketeer:[68,680],sniper:[520,3400],boss:[54,310]};
+    const profiles={assault:[135,760],heavy:[82,420],exploder:[210,1250],drone:[440,2850],shooter:[330,2100],rocketeer:[68,680],sniper:[520,3400],boss:[54,310]};
     const out={};for(const [type,[low,high]] of Object.entries(profiles)){
       out[`enemy.${type}.move`]={channel:'ambience',spatial:true,build:()=>[this.tone(low,.08,'triangle',.045),this.noise(.07,.04,high,'bandpass')]};
       out[`enemy.${type}.hit`]={channel:'gun',spatial:true,build:()=>[this.noise(.08,.13,high,'bandpass')]};
