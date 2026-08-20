@@ -250,7 +250,7 @@ try {
     velocityY: window.__verifyGame.player.velocity.y,
     sprintField: "sprint" in window.__verifyGame.input.state,
   }), pcGround);
-  assert(pcJump.y > pcGround && pcJump.velocityY > 0 && !pcJump.sprintField, "PC 空格跳跃或冲刺移除失败", pcJump);
+  assert(pcJump.y > pcGround && pcJump.velocityY > 0 && pcJump.sprintField, "PC 空格跳跃或奔跑输入字段失败", pcJump);
 
   const result = {
     radarUnit,

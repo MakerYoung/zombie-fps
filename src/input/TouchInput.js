@@ -6,6 +6,7 @@ export class TouchInput {
     this.lookId = null;
     this.fireId = null;
     this.touchFireId = null;
+    this.touchSprintId = null;
     this.origin = { x: 0, y: 0 };
     this.lastLook = { x: 0, y: 0 };
     this.lastFire = { x: 0, y: 0 };
@@ -52,6 +53,17 @@ export class TouchInput {
       e.stopPropagation();
       state.jump = true;
     });
+    ui.sprintButton.addEventListener("pointerdown", (e) => {
+      e.preventDefault(); e.stopPropagation(); state.sprint = true; ui.sprintButton.classList.add("active");
+      ui.sprintButton.setPointerCapture?.(e.pointerId);
+    });
+    const stopSprint = (e) => { e.preventDefault(); state.sprint = false; ui.sprintButton.classList.remove("active"); };
+    ui.sprintButton.addEventListener("pointerup", stopSprint);
+    ui.sprintButton.addEventListener("pointercancel", stopSprint);
+    ui.crouchButton.addEventListener("pointerdown", (e) => {
+      e.preventDefault(); e.stopPropagation(); state.crouch = !state.crouch;
+      ui.crouchButton.classList.toggle("active", state.crouch);
+    });
     ui.weaponButton.addEventListener("pointerdown", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -65,6 +77,11 @@ export class TouchInput {
     if (target?.closest("#reload")) this.s.reload = true;
     else if (target?.closest("#switchWeapon")) this.ui.triggerWeaponSwitch();
     else if (target?.closest("#jump")) this.s.jump = true;
+    else if (target?.closest("#sprint")) {
+      this.touchSprintId = touch.identifier; this.s.sprint = true; this.ui.sprintButton.classList.add("active");
+    } else if (target?.closest("#crouch")) {
+      this.s.crouch = !this.s.crouch; this.ui.crouchButton.classList.toggle("active", this.s.crouch);
+    }
     else if (target?.closest("#fire")) {
       this.touchFireId = touch.identifier;
       this.lastFire = { x: touch.clientX, y: touch.clientY };
@@ -120,6 +137,9 @@ export class TouchInput {
       if (t.identifier === this.touchFireId) {
         this.touchFireId = null;
         this.s.fire = false;
+      }
+      if (t.identifier === this.touchSprintId) {
+        this.touchSprintId = null; this.s.sprint = false; this.ui.sprintButton.classList.remove("active");
       }
     }
   }

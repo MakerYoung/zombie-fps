@@ -34,6 +34,10 @@ export function defaultAnims(overrides = {}) {
       }
       return { pos: [.06 * (1 - e), -.18 * (1 - e), 0], rot: [20 * Math.PI / 180 * (1 - e), 0, 0], scale: [-.15 * (1 - e), -.15 * (1 - e), -.15 * (1 - e)] };
     },
+    sprint(ctx) {
+      const blend=ctx.blend||0;if(blend<=0)return ZERO();const bob=Math.sin(ctx.now*.014)*.014*blend;
+      return {pos:[.1*blend,(-.13+bob)*blend,.055*blend],rot:[-.42*blend,.08*blend,-.28*blend],scale:[0,0,0]};
+    },
     moveSway(ctx) {
       const target = clamp(ctx.yawRate * config.moveSway.rateScale, -config.moveSway.maxPosition, config.moveSway.maxPosition);
       const previous = swayByOwner.get(ctx.owner) || 0;

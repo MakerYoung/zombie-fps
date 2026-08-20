@@ -11,11 +11,13 @@ import { PlayerController } from "../player/PlayerController.js";
 import { Weapon } from "../player/Weapon.js";
 import {
   WEAPONS,
+  WEAPON_IDS,
   WEAPON_CATEGORIES,
   weaponsByCategory,
 } from "../weapons/weaponData.js";
 import { EnemyManager } from "../enemies/EnemyManager.js";
 import { EnemyProjectileSystem } from "../enemies/EnemyProjectileSystem.js";
+import { PlayerProjectileSystem } from "../systems/PlayerProjectileSystem.js";
 import { AudioSystem } from "../systems/AudioSystem.js";
 import { ParticleSystem } from "../systems/ParticleSystem.js";
 import { DecalSystem } from "../systems/DecalSystem.js";
@@ -27,6 +29,7 @@ import { BuffSystem } from "../roguelike/BuffSystem.js";
 import { rollShop } from "../roguelike/shopItems.js";
 import { Radar } from "../ui/Radar.js";
 import { Progression } from "../progression/Progression.js";
+import { LootSystem } from "../loot/LootSystem.js";
 export class Game {
   constructor(root, ui) {
     this.ui = ui;
@@ -65,7 +68,9 @@ export class Game {
       this.input.touch,
     );
     this.enemyProjectiles = new EnemyProjectileSystem(this.engine.scene,this.bus,this.engine.camera,this.map);
+    this.playerProjectiles = new PlayerProjectileSystem(this.engine.scene,this.bus,this.engine.camera,this.map,this.enemies);
     this.audio = new AudioSystem(this.bus);
+    this.loot = new LootSystem(this.engine.scene,this.bus,this.engine.camera);
     this.switchingWeapon = false;
     this.particles = new ParticleSystem(
       this.engine.scene,
@@ -111,6 +116,7 @@ export class Game {
     if (this.player) this.player.map = map;
     if (this.enemies) this.enemies.map = map;
     if (this.enemyProjectiles) this.enemyProjectiles.map = map;
+    if (this.playerProjectiles) this.playerProjectiles.setMap(map);
     if (this.shooting) this.shooting.setMap(map);
     return map;
   }
@@ -132,8 +138,9 @@ export class Game {
     );
     this.bus.on("enemy:explode", (e) => {
       if(e.enemy.group.position.distanceTo(this.engine.camera.position)<=e.radius)this.health.damage(e.damage,e.enemy.def.name);
-      this.bus.emit("fx:burst",{position:e.enemy.group.position.clone(),color:0xff315f,count:36});
+      this.bus.emit("fx:radial",{position:e.enemy.group.position.clone(),radius:e.radius,color:0xff315f,count:42});
     });
+    this.bus.on('player:projectileImpact',({position,data,enemy,weapon})=>{let damage=data.damage*this.stats.get('damage')*this.stats.get('heavyDamage');if(enemy)damage=weapon.hook('onHit',{enemy,damage,headshot:false,point:position,game:this})??damage;const killed=enemy&&enemy.health<=damage;this.radialDamage(position,data.explosionRadius||3.2,damage,null,data.projectileType==='grenade'?0xffc14a:0xff5a24);if(killed)weapon.hook('onKill',{enemy,game:this,headshot:false});this.bus.emit('weapon:explosion',{position,radius:data.explosionRadius||3.2,data,enemy});});
     this.bus.on("enemy:attack", (e) => {
       if (Math.random() < .28) this.bus.emit("bullet:whiz", { position: e.enemy.group.position });
     });
@@ -145,6 +152,9 @@ export class Game {
       if (heal) this.health.heal(heal);
       if (enemy.def.deathBlast)
         this.radialDamage(enemy.group.position, enemy.def.deathBlast, 35);
+      const undiscovered=WEAPON_IDS.filter(id=>!this.progression.isWeaponUnlocked(id));
+      const weaponChance=enemy.def.boss?.38:enemy.def.elite?.12:.045;
+      if(undiscovered.length&&Math.random()<weaponChance){const weaponId=undiscovered[Math.floor(Math.random()*undiscovered.length)];this.bus.emit('loot:spawn',{type:{weaponId},position:enemy.group.position.clone()});}
     });
     this.bus.on("shot:hit", (e) => {
       if (this.stats.get("fireBullets")) e.enemy.applyElement("fire");
@@ -200,7 +210,17 @@ export class Game {
     );
     this.ui.onWeaponSwitch(() => this.cycleWeapon(1));
     // UI 统一走事件总线，动态生成的商店按钮也自动拥有悬停/点击反馈。
-    document.addEventListener("pointerover", (e) => { if (e.target.closest?.("button")) this.bus.emit("ui:hover"); });
+    document.addEventListener("pointerover", (e) => {
+      const button=e.target.closest?.("button"),from=e.relatedTarget?.closest?.("button");
+      if(button&&button!==from)this.bus.emit("ui:hover");
+    });
+    this.bus.on("loot:picked",({type})=>{
+      if(type.kind==='weapon'){const discovered=this.progression.discoverWeapon(type.weaponId);this.ui.lootNotify?.(discovered?`获得武器：${type.name}`:`重复武器：${type.name}`);this.ui.renderLoadout();this.bus.emit('weapon:discovered',{weaponId:type.weaponId,new:discovered});return;}
+      if(type.kind==='health')this.health.heal(type.amount);
+      else for(const weapon of this.inventory.filter(w=>w.data.ammoType===type.ammoType))weapon.addReserve(type.amount);
+      this.ui.lootNotify?.(`拾取：${type.name}`);
+      this.bus.emit('loot:applied',{type});
+    });
     document.addEventListener("click", (e) => { if (e.target.closest?.("button")) this.bus.emit("ui:click"); });
   }
   gainCurrency(amount, source = "kill") {
@@ -234,10 +254,12 @@ export class Game {
     const s = this.map.playerSpawn;
     this.engine.camera.position.set(s.x, s.y, s.z);
     this.player.yaw = s.yaw || 0;
+    this.player.resetMotion();
   }
   start({ mapId = "base", weaponIds } = {}) {
     this.audio.init();
     this.enemies.clear();
+    this.loot.clear();
     this.buffs.reset();
     this.stats = new Stats();
     this.health.stats = this.stats;
@@ -267,12 +289,12 @@ export class Game {
         : weaponIds?.[category];
       const data = WEAPONS[requested];
       return data?.category === category&&this.progression.isWeaponUnlocked(data.id) ? data : weaponsByCategory(category).find(w=>this.progression.isWeaponUnlocked(w.id));
-    });
+    }).filter(Boolean);
+    if(!selected.length)selected.push(WEAPONS.pistol);
     this.inventory = selected.map(
       (data) => new Weapon(this.engine.camera, this.bus, this.stats, data),
     );
-    const autoIndex = selected.findIndex((data) => data.category === "auto");
-    this.switchWeapon(Math.max(0, autoIndex), true);
+    const primaryIndex=selected.findIndex(data=>data.slot===1);this.switchWeapon(Math.max(0,primaryIndex),true);
     this.ui.showGame();
     this.ui.setEconomy(this.economy);
     const begin=()=>{this.state="playing";this.waves.start(1);if(!this.input.touch)this.engine.renderer.domElement.requestPointerLock?.();};
@@ -304,15 +326,15 @@ export class Game {
   }
   radialDamage(pos, radius, damage, except = null, color = 0xff5522) {
     this.enemies.active.forEach((e) => {
-      if (e !== except && e.alive && e.group.position.distanceTo(pos) < radius)
-        e.hit(Math.round(damage), false);
+      const distance=e.group.position.distanceTo(pos);if(e !== except && e.alive && distance < radius){const applied=e.hit(Math.round(damage*(1-distance/radius*.55)),false);this.bus.emit('damage:area',{enemy:e,damage:Math.round(applied),point:e.group.position.clone().add(new THREE.Vector3(0,1.35*e.def.scale,0)),origin:pos,radius});}
     });
-    this.bus.emit("fx:burst", { position: pos, color, count: 20 });
+    this.bus.emit("fx:radial", { position: pos.clone?.()||pos, radius, color, count: Math.max(24,Math.round(radius*10)) });
   }
   qBuffsClear() {
     this.ui.q("#buffs").innerHTML = "";
   }
   update(dt) {
+    this.audio.setState(this.state);
     // 地图仅更新悬浮装饰动画，不触碰碰撞与出生逻辑。
     this.map.update?.(performance.now()*.001);
     const active = this.state === "playing";
@@ -324,6 +346,8 @@ export class Game {
     }
     this.enemies.update(dt, active);
     this.enemyProjectiles.update(dt, active);
+    this.playerProjectiles.update(dt, active);
+    this.loot.update(dt,active);
     this.waves.update(dt, active);
     this.shooting.update(dt);
     this.particles.update(dt);
@@ -339,6 +363,9 @@ export class Game {
       ammo: this.weapon.ammo,
       reserve: this.weapon.reserve,
       weaponName: this.weapon.data.name,
+      weaponSlot: this.weapon.data.slot,
+      ammoType: this.weapon.data.ammoType,
+      perks: this.weapon.data.perks,
       kills: this.kills,
       empowered: this.weapon.empoweredRounds,
     });
@@ -365,7 +392,9 @@ export class Game {
     this.state = "menu";
     this.input.reset();
     this.enemies.clear();
+    this.loot.clear();
     this.enemyProjectiles.clear();
+    this.playerProjectiles.clear();
     this.ui.pause(false);
     this.ui.hud.classList.remove("show");
     this.ui.cards.classList.remove("show");

@@ -1,11 +1,12 @@
 import * as THREE from "three";
 import { MAP_DEFS } from "../map/mapDefs.js";
-import { WEAPON_CATEGORIES, weaponsByCategory } from "../weapons/weaponData.js";
+import { WEAPONS, WEAPON_CATEGORIES, weaponsByCategory } from "../weapons/weaponData.js";
 import { LOCKED_WEAPONS, TALENTS, TALENT_PRICES, WEAPON_UNLOCK_PRICE } from "../progression/Progression.js";
+import {WEAPON_PERKS} from "../weapons/weaponPerks.js";
 export class UI {
   constructor(root) {
     this.root = root;
-    // 三类武器各自保存一个选择，新增武器会由 category 自动进入对应分组。
+    // 三个槽位各自保存一个选择，新增武器会由 slot 自动进入对应分组。
     this.selection = {
       mapId: "base",
       weaponIds: Object.fromEntries(
@@ -13,6 +14,7 @@ export class UI {
       ),
     };
     root.innerHTML = this.html();
+    root.insertAdjacentHTML('beforeend','<div class="lootToast" aria-live="polite"></div><div class="criticalVignette"></div>');
     this.bind();
     this.renderLoadout();
     this.damage = [];
@@ -23,10 +25,10 @@ export class UI {
   html() {
     return `<div id="menu" class="panel show"><h1>僵尸围城</h1><p class="tag">3D FPS · ROGUELIKE</p><button id="start">开始游戏</button><button id="baseEntry">基地</button><button id="fullscreen">全屏</button><button data-dialog="help">操作说明</button><button data-dialog="settings">设置</button><button data-dialog="about">关于</button></div>
   <div id="base" class="overlay"><div class="baseBox"><header><button id="baseBack">← 返回</button><div><h2>作战基地</h2><p class="coreBalance"></p></div></header><h3>武器授权</h3><div class="baseWeapons"></div><h3>永久天赋</h3><div class="talentList"></div><p class="baseMessage" aria-live="polite"></p></div></div>
-  <div id="loadout" class="overlay"><div class="loadoutBox"><header><button id="loadoutBack">← 返回</button><div><h2>选择作战配置</h2><p>从三类武器中各选一把，全自动武器将作为默认主手</p></div></header><h3>行动区域</h3><div class="mapChoices"></div><h3>武器装备 <small>3 / 3</small></h3><div class="weaponChoices"></div><button id="confirmLoadout">确认出发</button></div></div>
+  <div id="loadout" class="overlay"><div class="loadoutBox"><header><button id="loadoutBack">← 返回</button><div><h2>选择作战配置</h2><p>仅显示已经获得的武器；新装备由敌人掉落</p></div></header><h3>行动区域</h3><div class="mapChoices"></div><h3>武器装备</h3><div class="weaponChoices"></div><aside class="weaponDetails"><p>悬停武器查看详细属性；移动端点击武器查看。</p></aside><button id="confirmLoadout">确认出发</button></div></div>
   <div id="dialog" class="panel"><div id="dialogText"></div><button id="closeDialog">返回</button></div><div id="hud"><div id="wave">第 1 波</div><div id="boss"><span>协议执刑者</span><i></i></div><div id="buffs"></div><div id="economy"><span>●</span> 金币 0</div><div id="health"><b>生命</b><i></i><span>100</span></div><div id="weaponName">制式手枪</div><div id="ammo">12 <small>/ ∞</small></div><div id="kills">击杀 0</div><div id="crosshair"><i></i><i></i><i></i><i></i></div><div id="hit">×</div><div id="damageFlash"></div></div>
   <div id="pause" class="overlay"><h2>游戏暂停</h2><button id="resume">继续战斗</button><button id="pauseHome">返回菜单</button><button id="pauseFullscreen">退出全屏</button></div><div id="cards" class="overlay"><div class="settlement"><h2></h2><div class="settlementGrid"><section><h3>选择一项词条 <small>必选</small></h3><div class="cardRow"></div></section><section class="shop"><h3>战地商店 <small>可选</small></h3><div class="shopBalance"></div><div class="shopItems"></div><button class="skipShop">跳过商店</button></section></div><footer><span class="choiceHint">请先选择一项词条</span><button class="nextWave" disabled>进入下一波</button></footer></div></div><div id="result" class="overlay"><div class="resultBox"><h2></h2><div class="stats"></div><button id="restart">再来一局</button><button id="home">返回菜单</button></div></div>
-  <div id="mobile"><div id="moveControls" class="controlGroup" data-label="移动"><div id="joystick">●</div></div><div id="actionControls" class="controlGroup" data-label="开火"><button id="fire">开火</button><button id="reload">换弹</button><button id="switchWeapon">切枪</button><button id="jump">跳跃</button></div><button id="menuBtn" aria-label="暂停菜单">☰</button><button id="finishLayout">保存布局</button></div>`;
+  <div id="mobile"><div id="moveControls" class="controlGroup" data-label="移动"><div id="joystick">●</div></div><div id="actionControls" class="controlGroup" data-label="动作"><button id="fire">开火</button><button id="reload">换弹</button><button id="switchWeapon">切枪</button><button id="jump">跳跃</button><button id="sprint">奔跑</button><button id="crouch">蹲下</button></div><button id="menuBtn" aria-label="暂停菜单">☰</button><button id="finishLayout">保存布局</button></div>`;
   }
   bind() {
     this.menu = this.q("#menu");
@@ -39,6 +41,8 @@ export class UI {
     this.reloadButton = this.q("#reload");
     this.weaponButton = this.q("#switchWeapon");
     this.jumpButton = this.q("#jump");
+    this.sprintButton = this.q("#sprint");
+    this.crouchButton = this.q("#crouch");
     this.menuButton = this.q("#menuBtn");
     this.q("#start").onclick = () => {
       this.menu.classList.remove("show");
@@ -65,14 +69,15 @@ export class UI {
         true,
       );
   }
-  setProgression(progression){this.progression=progression;this.renderLoadout();}
+  setProgression(progression){this.progression=progression;for(const category of WEAPON_CATEGORIES){const owned=weaponsByCategory(category.id).find(w=>progression.isWeaponUnlocked(w.id));if(!progression.isWeaponUnlocked(this.selection.weaponIds[category.id]))this.selection.weaponIds[category.id]=owned?.id;}this.renderLoadout();}
   notify(message){const el=this.q(".baseMessage");if(el)el.textContent=message;}
+  lootNotify(message){const el=this.q('.lootToast');if(!el)return;el.textContent=message;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');clearTimeout(this.lootToastTimer);this.lootToastTimer=setTimeout(()=>el.classList.remove('show'),2600);}
+  showWeaponDetails(id){const w=WEAPONS[id],panel=this.q('.weaponDetails');if(!w||!panel)return;const perks=w.perkPool.slice(0,6).map(pid=>WEAPON_PERKS[pid]).filter(Boolean);panel.innerHTML=`<header><div><em>${w.rarity==='legendary'?'传说':'稀有'} · ${w.frame.name}</em><h3>${w.name}</h3><p>${w.frame.description}</p></div><strong>${w.fireMode==='burst'?'三连发':w.fireMode==='charge'?`${w.frame.chargeTime.toFixed(2)} 秒蓄力`:w.fireMode==='auto'?'全自动':'半自动'}</strong></header><div class="weaponStats">${[['伤害',w.damage],['射速',Math.round(w.fireRate*10)],['射程',w.range],['稳定性',w.stability],['弹匣',w.magazine],['操纵性',w.handling]].map(([n,v])=>`<span><small>${n}</small><i style="--value:${Math.min(100,v)}%"></i><b>${v}</b></span>`).join('')}</div><h4>可能词条</h4><div class="perkDetails">${perks.map(p=>`<p><b>${p.name}</b><small>${p.desc}</small></p>`).join('')}</div>`;}
   renderBase(){
     if(!this.progression)return;const p=this.progression.data;
     this.q(".coreBalance").textContent=`数据核心：${p.cores}`;
-    this.q(".baseWeapons").innerHTML=LOCKED_WEAPONS.map(id=>{const w=weaponsByCategory('pistol').concat(weaponsByCategory('auto'),weaponsByCategory('shotgun')).find(x=>x.id===id),open=this.progression.isWeaponUnlocked(id);return `<button data-unlock="${id}" ${open?'disabled':''}><b>${w.name}</b><small>${open?'已解锁':`🔒 ${WEAPON_UNLOCK_PRICE} 核心`}</small></button>`;}).join('');
+    this.q(".baseWeapons").innerHTML=`<p>已发现 ${p.unlockedWeapons.length} / ${Object.keys(WEAPONS).length}。未发现武器只能通过击杀敌人获得。</p>`+p.unlockedWeapons.map(id=>`<button disabled><b>${WEAPONS[id].name}</b><small>已拥有</small></button>`).join('');
     this.q(".talentList").innerHTML=Object.entries(TALENTS).map(([id,t])=>{const level=p.talents[id],price=TALENT_PRICES[level];return `<button data-talent="${id}" ${level>=3?'disabled':''}><span><b>${t.name}</b><small>${t.desc}</small></span><strong>${level}/3 · ${level>=3?'已满级':`${price} 核心`}</strong></button>`;}).join('');
-    this.q(".baseWeapons").onclick=e=>{const b=e.target.closest('[data-unlock]');if(!b)return;const r=this.progression.unlockWeapon(b.dataset.unlock);this.notify(r.ok?'武器解锁成功':'数据核心不足');this.renderBase();this.renderLoadout();};
     this.q(".talentList").onclick=e=>{const b=e.target.closest('[data-talent]');if(!b)return;const r=this.progression.upgradeTalent(b.dataset.talent);this.notify(r.ok?`天赋升级至 ${r.level} 级`:r.reason==='cores'?'数据核心不足':'已达到最高等级');this.renderBase();};
   }
   renderLoadout() {
@@ -87,11 +92,11 @@ export class UI {
       .join("");
     weaponRow.innerHTML = WEAPON_CATEGORIES.map(
       (category) => `<section class="weaponGroup" data-category="${category.id}">
-        <h4>${category.name}${category.id === "auto" ? " <em>主手</em>" : ""}</h4>
-        <div>${weaponsByCategory(category.id).map(
-          (w) => {const locked=this.progression&&!this.progression.isWeaponUnlocked(w.id);return `<button class="weaponOption ${w.rarity} ${locked?'locked':''} ${w.id === this.selection.weaponIds[category.id] ? "selected" : ""}" data-weapon="${w.id}">
-            <em>${w.rarity === "legendary" ? "传说" : w.rarity === "rare" ? "稀有" : "普通"}</em><b>${locked?'🔒 ':''}${w.name}</b><small>${locked?`${WEAPON_UNLOCK_PRICE} 数据核心 · 点击前往基地解锁`:w.desc}</small>
-          </button>`;},
+        <h4>${category.name}${category.slot === 1 ? " <em>主手</em>" : category.slot===3?" <em>重弹掉落</em>":""}</h4>
+        <div>${weaponsByCategory(category.id).filter(w=>!this.progression||this.progression.isWeaponUnlocked(w.id)).map(
+          (w) => `<button class="weaponOption ${w.rarity} ${w.id === this.selection.weaponIds[category.id] ? "selected" : ""}" data-weapon="${w.id}">
+            <em>${w.rarity === "legendary" ? "传说" : w.rarity === "rare" ? "稀有" : "普通"} · ${w.frame.name}</em><b>${w.name}</b><small>${w.fireMode==='burst'?'三连发':w.fireMode==='charge'?'蓄力':w.fireMode==='auto'?'全自动':'半自动'} · 伤害 ${w.damage} · 弹匣 ${w.magazine}</small>
+          </button>`,
         ).join("")}</div>
       </section>`,
     )
@@ -106,12 +111,13 @@ export class UI {
     weaponRow.onclick = (e) => {
       const b = e.target.closest("[data-weapon]");
       if (b) {
-        if(this.progression&&!this.progression.isWeaponUnlocked(b.dataset.weapon)){this.loadout.classList.remove('show');this.base.classList.add('show');this.renderBase();this.notify('请先在基地解锁该武器');return;}
         const category = b.closest("[data-category]").dataset.category;
         this.selection.weaponIds[category] = b.dataset.weapon;
+        this.showWeaponDetails(b.dataset.weapon);
         this.renderLoadout();
       }
     };
+    weaponRow.onpointerover=(e)=>{const b=e.target.closest('[data-weapon]');if(b)this.showWeaponDetails(b.dataset.weapon);};
   }
   q(s) {
     return this.root.querySelector(s);
@@ -149,7 +155,7 @@ export class UI {
     const sensitivity = localStorage.getItem("sensitivity") || "7";
     const fireLookScale = localStorage.getItem("fireLookScale") || "1.0";
     const content = {
-      help: "<h2>操作说明</h2><p>PC：WASD 移动，鼠标瞄准，左键射击，R 换弹，数字键 1/2/3 或鼠标滚轮换武器，空格跳跃，ESC 释放鼠标。</p><p>手机：左侧摇杆移动，右侧滑动或按住开火键拖动瞄准；右侧按钮可射击、换弹、切枪与跳跃。</p>",
+      help: "<h2>操作说明</h2><p>PC：WASD 移动，Shift 奔跑，Ctrl/C 蹲下，鼠标瞄准，左键射击，R 换弹，数字键 1/2/3 或鼠标滚轮换武器，空格跳跃，ESC 释放鼠标。奔跑时不可开枪。</p><p>手机：左侧摇杆移动，右侧滑动或按住开火键拖动瞄准；右侧按钮可射击、奔跑、蹲下、换弹、切枪与跳跃。</p>",
       settings: `<h2>设置</h2><label>灵敏度 <input id="sensitivity" type="range" min="1" max="10" value="${sensitivity}"></label><label>开火转向灵敏度倍率 <output id="fireLookValue">${Number(fireLookScale).toFixed(1)}x</output><input id="fireLookScale" type="range" min="0.5" max="2" step="0.1" value="${fireLookScale}"></label><label>音量 <input id="volume" type="range" min="0" max="100" value="65"></label><label>画质 <select><option>自动</option><option>低</option><option>中</option><option>高</option></select></label><button id="editLayout">调整按键位置</button>`,
       about:
         "<h2>关于</h2><p>程序化生成的 Three.js 僵尸 FPS。所有模型、视觉反馈和 WebAudio 音效均在本地生成。</p>",
@@ -242,6 +248,7 @@ export class UI {
     this.hud.classList.add("show");
   }
   update(state) {
+    this.q('.criticalVignette').classList.toggle('show',state.health>0&&state.health/state.maxHealth<=.3);
     this.q("#health i").style.width =
       `${Math.max(0, (state.health / state.maxHealth) * 100)}%`;
     this.q("#health span").textContent =
@@ -249,7 +256,7 @@ export class UI {
     const ammo = this.q("#ammo");
     ammo.classList.toggle("empowered", state.empowered > 0);
     ammo.innerHTML = `${state.ammo} <small>/ ${Number.isFinite(state.reserve) ? state.reserve : "∞"}${state.empowered ? ` · 强化 ${state.empowered}` : ""}</small>`;
-    this.q("#weaponName").textContent = state.weaponName;
+    this.q("#weaponName").textContent = `[${state.weaponSlot}] ${state.weaponName} · ${(state.perks||[]).map(p=>p.name).join(' / ')}`;
     this.q("#kills").textContent = `击杀 ${state.kills}`;
   }
   fullscreenChanged(active) {

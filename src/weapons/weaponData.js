@@ -1,11 +1,11 @@
-import { pistol } from './pistol.js';import { smg } from './smg.js';import { shotgun } from './shotgun.js';import { aceOfSpades } from './aceOfSpades.js';import { khvostov } from './khvostov.js';import { conditionalFinality } from './conditionalFinality.js';import { longbow } from './longbow.js';
-// 统一注册表：新增枪械只需独立导出定义并在此登记。
-export const WEAPONS=Object.fromEntries([pistol,smg,shotgun,aceOfSpades,khvostov,conditionalFinality,longbow].map(w=>[w.id,w]));
+import {WEAPON_CATALOG} from './weaponCatalog.js';
+export const WEAPONS=Object.fromEntries(WEAPON_CATALOG.map(w=>[w.id,w]));
 export const WEAPON_IDS=Object.keys(WEAPONS);
-// 类别顺序同时决定装备槽与数字键顺序；注册新武器时只需声明 category。
-export const WEAPON_CATEGORIES=[
-  {id:'pistol',name:'手枪手炮类'},
-  {id:'auto',name:'全自动类'},
-  {id:'shotgun',name:'霰弹类'},
+export const WEAPON_SLOTS=[
+  {id:'1',slot:1,name:'一号位 · 主武器',ammoType:'primary'},
+  {id:'2',slot:2,name:'二号位 · 特殊武器',ammoType:'mixed'},
+  {id:'3',slot:3,name:'三号位 · 重型武器',ammoType:'heavy'},
 ];
-export const weaponsByCategory=(category)=>Object.values(WEAPONS).filter(w=>w.category===category);
+export const WEAPON_CATEGORIES=WEAPON_SLOTS;
+export const weaponsBySlot=slot=>Object.values(WEAPONS).filter(w=>w.slot===Number(slot));
+export const weaponsByCategory=weaponsBySlot;

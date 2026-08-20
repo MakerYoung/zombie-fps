@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
 import { defaultAnims } from '../src/weapons/animations.js';
@@ -19,7 +20,7 @@ async function setup(page){
 async function capture(page,size,label,prepare){
   await page.setViewportSize(size);
   await page.evaluate(prepare);
-  const name=`${label}-${size.width}x${size.height}.png`,path=new URL(name,out).pathname;
+  const name=`${label}-${size.width}x${size.height}.png`,path=fileURLToPath(new URL(name,out));
   await page.screenshot({path});report.screenshots.push(`artifacts/step1-anim/${name}`);
 }
 

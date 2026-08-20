@@ -19,7 +19,7 @@ export const BUFF_POOL=[
  stat('heavyRounds','重弹强化','强化重弹伤害 +40%','epic','heavyDamage',1.4),
  stat('adrenaline','肾上腺爆发','低于 35% 生命时移速 +20%','common','lowHealthSpeed',1.2),
  {id:'armorRegen',name:'护甲再生',desc:'每波开始恢复 20 护甲',rarity:'rare',apply(c,s){c.listen(`armorRegen:${s}`,'wave:start',()=>c.health.armor=Math.min(100,c.health.armor+20));}},
- stat('vampirePlus','吸血强化','生命汲取效果 +50%','rare','lifeSteal',1.5),
+ stat('vampirePlus','吸血强化','生命汲取 +1.5%','rare','lifeSteal',.015,'add'),
  stat('slideDodge','滑步','移动时有 10% 概率闪避伤害','common','dodgeChance',.1,'add'),
  stat('bounce','弹跳','跳跃高度 +40%','common','jumpHeight',1.4),
  stat('weakPoint','弱点打击','爆头伤害 +25%','rare','headshotDamage',1.25),

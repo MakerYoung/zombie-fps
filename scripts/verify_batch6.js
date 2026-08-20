@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {fileURLToPath} from 'node:url';
 import {spawn} from 'node:child_process';
 import {chromium} from 'playwright';
 
 const port=41746,out=new URL('../artifacts/batch6/',import.meta.url);fs.mkdirSync(out,{recursive:true});
-const server=spawn('npm',['run','dev','--','--host','127.0.0.1','--port',String(port),'--strictPort'],{stdio:['ignore','pipe','pipe'],detached:true});
-const ready=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Vite 启动超时')),15000),done=d=>{if(String(d).includes('Local:')){clearTimeout(timer);resolve();}};server.stdout.on('data',done);server.stderr.on('data',done);});
+const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port',String(port),'--strictPort'],{stdio:['ignore','pipe','pipe'],detached:true});
+const ready=new Promise((resolve,reject)=>{const started=Date.now(),poll=setInterval(async()=>{try{const response=await fetch(`http://127.0.0.1:${port}`);if(response.ok){clearInterval(poll);resolve();}}catch{}if(Date.now()-started>15000){clearInterval(poll);reject(new Error('Vite 启动超时'));}},100);server.once('error',reject);});
 const report={generatedAt:new Date().toISOString(),runtime:'Playwright + Vite 真实游戏 ?verify=1',waves:[],navigation:{}};
 const round=n=>+n.toFixed(2),vec=p=>({x:round(p.x),z:round(p.z)});
 
@@ -40,5 +41,5 @@ try{
   report.navigation.room=await runNavigation(page,'base',{player:{x:-20,z:18},enemy:{x:-12,z:14}});
   report.navigation.rangedLos=await runNavigation(page,'transportShip',{player:{x:5.7,z:9},enemy:{x:11,z:9},type:'shooter'});
   assert(report.navigation.container.firstAttackSeconds>report.navigation.container.firstVisibleSeconds,'集装箱隔墙时发生攻击');assert(report.navigation.room.firstAttackSeconds>report.navigation.room.firstVisibleSeconds,'房间隔墙时发生攻击');assert.equal(report.navigation.rangedLos.projectiles>0,true,'远程敌人绕出墙后未射击');
-  await page.screenshot({path:new URL('final-real-game.png',out).pathname});await browser.close();fs.writeFileSync(new URL('verification.json',out),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
+  await page.screenshot({path:fileURLToPath(new URL('final-real-game.png',out))});await browser.close();fs.writeFileSync(new URL('verification.json',out),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }finally{try{process.kill(-server.pid,'SIGTERM');}catch{} }

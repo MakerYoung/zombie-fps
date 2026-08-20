@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import {addArenaDecor,animateArena,arenaMaterial,arenaTexture} from './TheFinalsStyle.js';
 import {MAP_DEFS} from './mapDefs.js';
 import {buildSafeSpawns,randomSafeSpawn} from './spawnSafety.js';
+import {NavGrid} from './NavGrid.js';
 
 export class MapGenerator{
   constructor(scene,def=MAP_DEFS.base){
     this.scene=scene;this.def=def;this.colliders=[];this.platforms=[];this.textures={};this.group=new THREE.Group();this.group.name=`Map:${def.id}`;
     this.size=def.length;this.width=def.width;this.length=def.length;this.boundsX=def.boundsX;this.boundsZ=def.boundsZ;this.bounds=Math.max(def.boundsX,def.boundsZ);
-    this.playerSpawn={...def.playerSpawn};this.enemySpawns=def.enemySpawns.map(p=>({...p}));this.hasArenaDecor=false;scene.add(this.group);this.build();buildSafeSpawns(this);
+    this.playerSpawn={...def.playerSpawn};this.enemySpawns=def.enemySpawns.map(p=>({...p}));this.hasArenaDecor=false;scene.add(this.group);this.build();buildSafeSpawns(this);this.navigation=new NavGrid(this);
   }
   setActive(active){this.group.visible=active;this.active=active;}
   texture(kind,color='#47788d',number='TS-01'){
@@ -19,12 +20,13 @@ export class MapGenerator{
     c.globalAlpha=1;const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.anisotropy=4;this.textures[key]=texture;return texture;
   }
   material(kind,w,d,color,number){
+    const custom=this.def.material?.({kind,w,d,color,number});if(custom)return custom;
     if(['deck','hull'].includes(kind)||this.def.id==='transportShip'&&kind==='container')return new THREE.MeshStandardMaterial({map:this.texture(kind,color,number),color:0xffffff,metalness:.62,roughness:kind==='deck'?.42:.36});
     return arenaMaterial(kind==='shack'?'glass':kind==='container'?'stripe':'concrete',w,d);
   }
   box(x,z,w,h,d,color=0x555b60,kind='brick',collide=true,role='wall',y=0,number='TS-01',rotation=0){
     const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),this.material(kind,w,Math.max(h,d),color,number));mesh.position.set(x,y+h/2,z);mesh.rotation.y=rotation;mesh.castShadow=mesh.receiveShadow=true;mesh.userData.world=true;mesh.userData.collide=collide;mesh.userData.collisionRole=role;this.group.add(mesh);
-    if(collide){const bounds=new THREE.Box3().setFromObject(mesh);this.colliders.push(bounds);if(bounds.max.y>.25)this.platforms.push(bounds);}return mesh;
+    if(collide){const bounds=new THREE.Box3().setFromObject(mesh);bounds.userData={role,climbable:['platform','container'].includes(role)};this.colliders.push(bounds);if(bounds.max.y>.25)this.platforms.push(bounds);}return mesh;
   }
   roof(x,z,w,h,d,kind='shack',y=0){return this.box(x,z,w,h,d,0,kind,false,'roof',y);}
   container(item){return this.box(item.x,item.z,item.w,item.h,item.d,item.color,item.mat,true,'container',(item.y||0)+(item.level||0)*2.6,item.number,item.rotation||0);}
@@ -44,10 +46,15 @@ export class MapGenerator{
     if(item.t==='ring'){const mesh=new THREE.Mesh(new THREE.TorusGeometry(.55,.15,8,18),new THREE.MeshStandardMaterial({color:0xff6938,roughness:.45}));mesh.position.set(item.x,item.y,item.z);mesh.rotation.y=item.ry||0;this.group.add(mesh);return;}
     throw new Error(`Unknown map decor type: ${item.t}`);
   }
-  build(){this.buildGround();this.def.objects.forEach(item=>this.buildObject(item));const batch={size:this.def.ground.size,holograms:[],floaters:[],pillars:[]};this.def.decor.forEach(item=>this.makeDecor(item,batch));if(this.hasArenaDecor)addArenaDecor(this.group,batch);}
-  update(time){if(this.hasArenaDecor)animateArena(this.group,time);}
+  build(){this.buildGround();this.def.objects.forEach(item=>this.buildObject(item));const batch={size:this.def.ground.size,holograms:[],floaters:[],pillars:[]};this.def.decor.forEach(item=>this.makeDecor(item,batch));if(this.hasArenaDecor)addArenaDecor(this.group,batch);this.customUpdate=this.def.decorate?.(this.group)||null;}
+  update(time){if(this.hasArenaDecor)animateArena(this.group,time);this.customUpdate?.(time);}
   collides(pos,r){if(Math.abs(pos.x)+r>this.def.boundsX-.5||Math.abs(pos.z)+r>this.def.boundsZ-.5)return true;return this.colliders.some(b=>pos.x+r>b.min.x&&pos.x-r<b.max.x&&pos.z+r>b.min.z&&pos.z-r<b.max.z&&pos.y>b.min.y-.2&&pos.y-1.7<b.max.y);}
+  collidesEnemy(pos,r,height=1.7){if(Math.abs(pos.x)+r>this.def.boundsX-.5||Math.abs(pos.z)+r>this.def.boundsZ-.5)return true;return this.colliders.some(b=>pos.x+r>b.min.x&&pos.x-r<b.max.x&&pos.z+r>b.min.z&&pos.z-r<b.max.z&&pos.y+height>b.min.y+.05&&pos.y<b.max.y-.05);}
+  blocksSight(pos,r=.08){if(Math.abs(pos.x)+r>this.def.boundsX-.5||Math.abs(pos.z)+r>this.def.boundsZ-.5)return true;return this.colliders.some(b=>pos.x+r>b.min.x&&pos.x-r<b.max.x&&pos.z+r>b.min.z&&pos.z-r<b.max.z&&pos.y+r>b.min.y&&pos.y-r<b.max.y);}
   heightAt(pos,r=.32){let height=0;for(const b of this.platforms)if(pos.x+r>b.min.x&&pos.x-r<b.max.x&&pos.z+r>b.min.z&&pos.z-r<b.max.z&&b.max.y<=pos.y-1.45)height=Math.max(height,b.max.y);return height;}
+  climbHeightAt(pos,r=.32,fromY=0,maxStep=1.35){let height=null;for(const b of this.colliders)if(b.userData?.climbable&&pos.x+r>b.min.x&&pos.x-r<b.max.x&&pos.z+r>b.min.z&&pos.z-r<b.max.z&&b.max.y>fromY+.08&&b.max.y<=fromY+maxStep)height=Math.max(height??-Infinity,b.max.y);return height;}
+  supportHeightAt(pos,r=.32,currentY=0){let height=0;for(const b of this.colliders)if(b.userData?.climbable&&pos.x+r>b.min.x&&pos.x-r<b.max.x&&pos.z+r>b.min.z&&pos.z-r<b.max.z&&b.max.y<=currentY+.18)height=Math.max(height,b.max.y);return height;}
   surfaceAt(pos){return this.def.id==='base'&&Math.abs(pos.x)<10&&Math.abs(pos.z)<10?'stone':this.def.ground.kind==='deck'?'stone':'ground';}
   randomEdge(){return randomSafeSpawn(this);}
+  findPath(start,end,radius=.42){return this.navigation.findPath(start,end,radius);}
 }

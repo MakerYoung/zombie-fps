@@ -1,3 +1,6 @@
+import {newYearMapDef} from './NewYearMap.js';
+import {newYearSquareMapDef} from './newYearSquareMapDef.js'
+
 const object=(t,x,z,w,h,d,extra={})=>({t,x,z,w,h,d,...extra});
 
 const baseObjects=[
@@ -76,6 +79,8 @@ export const MAP_DEFS={
   transportShip:{id:'transportShip',name:'运输船',desc:'集装箱堆叠的狭长货轮甲板',width:42,length:96,boundsX:21,boundsZ:48,ground:{kind:'deck',size:96,repeat:1},playerSpawn:{x:0,y:1.72,z:40,yaw:0},enemySpawns:[{x:0,z:-40},{x:-13,z:-41},{x:13,z:-41},{x:-17,z:-31},{x:17,z:-31}],objects:shipObjects,decor:[{t:'line',x:-5.3,y:.012,z:0,len:82},{t:'line',x:5.3,y:.012,z:0,len:82},...[-31,31].flatMap(z=>[-20.1,20.1].map(x=>({t:'ring',x,y:1.65,z,ry:Math.PI/2})))]},
   testmap:{id:'testmap',name:'数据驱动测试场',desc:'验证地图注册与平台碰撞的紧凑试验场',width:15,length:15,boundsX:7.5,boundsZ:7.5,ground:{kind:'ground',size:15,repeat:3},playerSpawn:{x:0,y:1.72,z:0,yaw:0},enemySpawns:[{x:-5,z:-5},{x:5,z:5}],objects:[object('wall',-5,0,1,2.5,5),object('wall',5,0,1,2.5,5),object('wall',0,-5,5,2.5,1),object('deck',0,4,3,.8,3,{mat:'vehicle'})],decor:[]},
   borderPost:{id:'borderPost',name:'边境哨站',desc:'黄沙边境的废弃检查站,东区仓库西区废墟',width:60,length:40,boundsX:30,boundsZ:20,ground:{kind:'ground',size:60,repeat:10},playerSpawn:{x:0,y:1.72,z:8,yaw:0},enemySpawns:[{x:-26,z:-15},{x:-26,z:0},{x:-26,z:15},{x:26,z:-15},{x:26,z:0},{x:26,z:15}],objects:borderPostObjects,decor:[{t:'pillar',x:-11,z:-17,color:'orange'},{t:'pillar',x:11,z:17,color:'cyan'},{t:'floater',x:0,y:5.4,z:-3,kind:'ring'}]},
+  [newYearMapDef.id]:newYearMapDef,
+  [newYearSquareMapDef.id]:newYearSquareMapDef,
 };
 
 export const MAP_IDS=Object.keys(MAP_DEFS);

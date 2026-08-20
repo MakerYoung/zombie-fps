@@ -1,6 +1,6 @@
 import { WEAPON_IDS } from '../weapons/weaponData.js';
 
-export const LOCKED_WEAPONS=['ace','conditional','khvostov'];
+export const LOCKED_WEAPONS=WEAPON_IDS.filter(id=>id!=='pistol');
 export const WEAPON_UNLOCK_PRICE=60;
 export const TALENT_PRICES=[20,40,60];
 export const TALENTS={
@@ -10,7 +10,7 @@ export const TALENTS={
   startingBuffs:{name:'先发优势',desc:'每级获得 1 次开局免费词条三选一'},
 };
 
-const defaults=()=>({cores:20,unlockedWeapons:WEAPON_IDS.filter(id=>!LOCKED_WEAPONS.includes(id)),talents:Object.fromEntries(Object.keys(TALENTS).map(id=>[id,0]))});
+const defaults=()=>({cores:20,unlockedWeapons:['pistol'],talents:Object.fromEntries(Object.keys(TALENTS).map(id=>[id,0]))});
 
 // 独立持久化模块允许浏览器 localStorage 与 headless 内存存储走同一套逻辑。
 export class Progression {
@@ -29,6 +29,7 @@ export class Progression {
   }
   save(){this.storage?.setItem('progress_cores',String(this.data.cores));this.storage?.setItem('progress_weapons',JSON.stringify(this.data.unlockedWeapons));this.storage?.setItem('progress_talents',JSON.stringify(this.data.talents));}
   isWeaponUnlocked(id){return this.data.unlockedWeapons.includes(id);}
+  discoverWeapon(id){if(!WEAPON_IDS.includes(id)||this.isWeaponUnlocked(id))return false;this.data.unlockedWeapons.push(id);this.save();return true;}
   unlockWeapon(id){if(!LOCKED_WEAPONS.includes(id)||this.isWeaponUnlocked(id))return {ok:false,reason:'invalid'};if(this.data.cores<WEAPON_UNLOCK_PRICE)return {ok:false,reason:'cores'};this.data.cores-=WEAPON_UNLOCK_PRICE;this.data.unlockedWeapons.push(id);this.save();return {ok:true};}
   upgradeTalent(id){const level=this.data.talents[id];if(!TALENTS[id]||level>=3)return {ok:false,reason:'max'};const price=TALENT_PRICES[level];if(this.data.cores<price)return {ok:false,reason:'cores'};this.data.cores-=price;this.data.talents[id]=level+1;this.save();return {ok:true,level:level+1,price};}
   award({kills=0,waves=0,bossKills=0}){const earned=Math.max(0,Math.floor(kills)+Math.floor(waves)*3+Math.floor(bossKills)*20);this.data.cores+=earned;this.save();return earned;}
